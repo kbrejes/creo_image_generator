@@ -190,17 +190,18 @@ class ImageCompositor:
             Dict with success status and output URL
         """
         try:
-            # Load the source image
-            if image_source.startswith("http"):
+            # Get target size
+            target_size = self.SIZES.get(output_size, self.SIZES["instagram_square"])
+
+            # Load the source image or create white background
+            if not image_source or image_source.lower() in ("white", "blank", "none", ""):
+                # Create white background
+                img = Image.new("RGB", target_size, color="white")
+            elif image_source.startswith("http"):
                 async with httpx.AsyncClient() as client:
                     response = await client.get(image_source)
                     response.raise_for_status()
                     img = Image.open(io.BytesIO(response.content))
-            else:
-                img = Image.open(image_source)
-
-            # Get target size
-            target_size = self.SIZES.get(output_size, self.SIZES["instagram_square"])
 
             # Resize image to fit target, maintaining aspect ratio and cropping
             img = self._resize_and_crop(img, target_size)
@@ -218,10 +219,10 @@ class ImageCompositor:
 
             # Uniform font sizes - max 30% difference between any two
             # CTA is largest, hook medium, body smallest
-            # Base: 44pt body, 52pt hook (+18%), 56pt CTA (+27%)
-            BODY_SIZE = 44
-            HOOK_SIZE = 52  # 18% larger than body
-            CTA_SIZE = 56   # 27% larger than body, largest
+            # All sizes increased 25% for better readability
+            BODY_SIZE = 55
+            HOOK_SIZE = 65  # 18% larger than body
+            CTA_SIZE = 70   # 27% larger than body, largest
 
             # Draw hook text at top
             if hook_text:
@@ -238,7 +239,7 @@ class ImageCompositor:
                         draw, (x, y_offset), line, hook_font,
                         fill=text_color, outline=outline_color, outline_width=outline_width
                     )
-                    y_offset += bbox[3] - bbox[1] + 10
+                    y_offset += bbox[3] - bbox[1] + 15  # Line spacing for hook
 
             # Body and CTA at bottom
             text_blocks = []
@@ -260,8 +261,8 @@ class ImageCompositor:
                 for lines, font in text_blocks:
                     for line in lines:
                         bbox = font.getbbox(line)
-                        total_height += bbox[3] - bbox[1] + 5
-                    total_height += 15  # Spacing between blocks
+                        total_height += bbox[3] - bbox[1] + 12  # Line spacing
+                    total_height += 35  # Spacing between body and CTA blocks
 
                 # Start from bottom, working upward
                 y_offset = height - padding - total_height
@@ -276,8 +277,8 @@ class ImageCompositor:
                             draw, (x, y_offset), line, font,
                             fill=text_color, outline=outline_color, outline_width=outline_width
                         )
-                        y_offset += bbox[3] - bbox[1] + 5
-                    y_offset += 15  # Space between body and CTA
+                        y_offset += bbox[3] - bbox[1] + 12  # Line spacing
+                    y_offset += 35  # Space between body and CTA
 
             # Save to bytes
             output = io.BytesIO()

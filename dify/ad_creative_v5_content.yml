@@ -151,7 +151,14 @@ workflow:
               required: false
               type: number
               variable: font_scale
-            - label: "Image Generator"
+            - label: "Background"
+              required: false
+              type: select
+              variable: background
+              options:
+                - "AI Generated"
+                - "White"
+            - label: "Image Generator (if AI background)"
               required: false
               type: select
               variable: backend
@@ -413,7 +420,11 @@ workflow:
           code: |
             import json
 
-            def main(body: str) -> dict:
+            def main(body: str, background: str = "") -> dict:
+                # If white background selected, skip generated image
+                if background and background.lower() == "white":
+                    return {"image_url": "white"}
+
                 try:
                     data = json.loads(body)
                     if data.get("success") and data.get("images"):
@@ -425,7 +436,7 @@ workflow:
                 except:
                     return {"image_url": ""}
           code_language: python3
-          desc: Extract image URL
+          desc: Extract image URL or use white background
           outputs:
             image_url:
               type: string
@@ -437,6 +448,10 @@ workflow:
                 - "5"
                 - body
               variable: body
+            - value_selector:
+                - "1"
+                - background
+              variable: background
         height: 98
         id: "6"
         position:
