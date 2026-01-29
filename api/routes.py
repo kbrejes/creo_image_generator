@@ -233,10 +233,22 @@ async def api_compose_ad(
     cta_text: str = "",
     output_size: str = "instagram_square",
     font_name: str = "impact",
-    hook_font_size: int = 72,
-    body_font_size: int = 48,
+    hook_font_size: int = 120,
+    body_font_size: int = 60,
+    cta_font_size: int = 48,
+    text_color: str = "",
 ):
     """Compose final ad with text overlay."""
+    # Determine text and outline colors
+    # Default: white text with black outline (for dark/AI backgrounds)
+    # Black option: black text with white outline (for light/white backgrounds)
+    if text_color and "black" in text_color.lower():
+        actual_text_color = "black"
+        outline_color = "white"
+    else:
+        actual_text_color = "white"
+        outline_color = "black"
+
     compositor = ImageCompositor()
     return await compositor.compose(
         image_source=image_url,
@@ -247,6 +259,9 @@ async def api_compose_ad(
         font_name=font_name,
         hook_font_size=hook_font_size,
         body_font_size=body_font_size,
+        cta_font_size=cta_font_size,
+        text_color=actual_text_color,
+        outline_color=outline_color,
     )
 
 

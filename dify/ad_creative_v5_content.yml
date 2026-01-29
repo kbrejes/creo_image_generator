@@ -158,6 +158,13 @@ workflow:
               options:
                 - "AI Generated"
                 - "White"
+            - label: "Text Color"
+              required: false
+              type: select
+              variable: text_color
+              options:
+                - "White (for dark backgrounds)"
+                - "Black (for light backgrounds)"
             - label: "Image Generator (if AI background)"
               required: false
               type: select
@@ -470,7 +477,7 @@ workflow:
           desc: Add text overlay to image
           headers: ""
           method: post
-          params: "image_url:{{#6.image_url#}}\nhook_text:{{#3.hook#}}\nbody_text:{{#3.body#}}\ncta_text:{{#3.cta#}}\noutput_size:instagram_square\nhook_font_size:120\nbody_font_size:42\ncta_font_size:48"
+          params: "image_url:{{#6.image_url#}}\nhook_text:{{#3.hook#}}\nbody_text:{{#3.body#}}\ncta_text:{{#3.cta#}}\noutput_size:instagram_square\nhook_font_size:120\nbody_font_size:42\ncta_font_size:48\ntext_color:{{#1.text_color#}}"
           timeout:
             connect: 60
             max_connect_timeout: 60

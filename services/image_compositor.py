@@ -258,16 +258,22 @@ class ImageCompositor:
 
                 # Calculate total actual height needed
                 total_height = 0
-                for lines, font in text_blocks:
+                for i, (lines, font) in enumerate(text_blocks):
                     for line in lines:
                         bbox = font.getbbox(line)
                         total_height += bbox[3] - bbox[1] + 12  # Line spacing
-                    total_height += 35  # Spacing between body and CTA blocks
+                    # Only add spacing between blocks, not after last block
+                    if i < len(text_blocks) - 1:
+                        total_height += 40  # Spacing between body and CTA blocks
 
                 # Start from bottom, working upward
+                # Ensure we don't go above the bottom zone start (65% of image)
                 y_offset = height - padding - total_height
+                min_y = bottom_zone_start + padding  # Don't overlap with middle zone
+                if y_offset < min_y:
+                    y_offset = min_y  # Force text to stay in bottom zone
 
-                for lines, font in text_blocks:
+                for i, (lines, font) in enumerate(text_blocks):
                     for line in lines:
                         bbox = font.getbbox(line)
                         text_width = bbox[2] - bbox[0]
@@ -278,7 +284,9 @@ class ImageCompositor:
                             fill=text_color, outline=outline_color, outline_width=outline_width
                         )
                         y_offset += bbox[3] - bbox[1] + 12  # Line spacing
-                    y_offset += 35  # Space between body and CTA
+                    # Only add spacing between blocks, not after last block
+                    if i < len(text_blocks) - 1:
+                        y_offset += 40  # Space between body and CTA
 
             # Save to bytes
             output = io.BytesIO()
