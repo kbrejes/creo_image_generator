@@ -216,18 +216,18 @@ class ImageCompositor:
             bottom_zone_height = int(height * 0.35) - padding
             bottom_zone_start = int(height * 0.65)
 
-            # Calculate adaptive font sizes for hook text (top zone)
-            if hook_text:
-                hook_font, hook_lines = self._calculate_optimal_font_size(
-                    text=hook_text.upper(),
-                    max_font_size=hook_font_size,
-                    min_font_size=max(64, int(hook_font_size * 0.6)),  # At least 64pt, or 60% of requested
-                    max_width=max_text_width,
-                    max_height=top_zone_height,
-                    font_name=font_name,
-                )
+            # Uniform font sizes - max 30% difference between any two
+            # CTA is largest, hook medium, body smallest
+            # Base: 44pt body, 52pt hook (+18%), 56pt CTA (+27%)
+            BODY_SIZE = 44
+            HOOK_SIZE = 52  # 18% larger than body
+            CTA_SIZE = 56   # 27% larger than body, largest
 
-                # Draw hook text at top
+            # Draw hook text at top
+            if hook_text:
+                hook_font = self._find_font(font_name, HOOK_SIZE)
+                hook_lines = self._wrap_text(hook_text.upper(), hook_font, max_text_width)
+
                 y_offset = padding
                 for line in hook_lines:
                     bbox = hook_font.getbbox(line)
@@ -240,32 +240,20 @@ class ImageCompositor:
                     )
                     y_offset += bbox[3] - bbox[1] + 10
 
-            # Calculate adaptive font sizes for body and CTA (bottom zone)
-            # Combine body and CTA to calculate together
-            bottom_text_parts = []
+            # Body and CTA at bottom
+            text_blocks = []
+
             if body_text:
-                bottom_text_parts.append((body_text, body_font_size))
+                body_font = self._find_font(font_name, BODY_SIZE)
+                body_lines = self._wrap_text(body_text, body_font, max_text_width)
+                text_blocks.append((body_lines, body_font))
+
             if cta_text:
-                bottom_text_parts.append((cta_text.upper(), cta_font_size))
+                cta_font = self._find_font(font_name, CTA_SIZE)
+                cta_lines = self._wrap_text(cta_text.upper(), cta_font, max_text_width)
+                text_blocks.append((cta_lines, cta_font))
 
-            if bottom_text_parts:
-                # Calculate optimal sizes for each text part
-                text_blocks = []
-                remaining_height = bottom_zone_height
-
-                for text, max_size in bottom_text_parts:
-                    # Allocate proportional space based on font size
-                    allocated_height = int(remaining_height * (max_size / sum(fs for _, fs in bottom_text_parts)))
-
-                    font, lines = self._calculate_optimal_font_size(
-                        text=text,
-                        max_font_size=max_size,
-                        min_font_size=max(38, int(max_size * 0.6)),  # At least 38pt, or 60% of requested
-                        max_width=max_text_width,
-                        max_height=allocated_height,
-                        font_name=font_name,
-                    )
-                    text_blocks.append((lines, font))
+            if text_blocks:
 
                 # Calculate total actual height needed
                 total_height = 0
