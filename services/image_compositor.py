@@ -14,17 +14,20 @@ class ImageCompositor:
     # Font paths (system fonts)
     FONT_PATHS = {
         "impact": [
+            "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",  # Linux Docker
             "/System/Library/Fonts/Supplemental/Impact.ttf",  # macOS
             "/usr/share/fonts/truetype/msttcorefonts/Impact.ttf",  # Linux
             "C:\\Windows\\Fonts\\impact.ttf",  # Windows
         ],
         "arial_bold": [
+            "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",  # Linux Docker
             "/System/Library/Fonts/Supplemental/Arial Bold.ttf",
             "/Library/Fonts/Arial Bold.ttf",
             "/usr/share/fonts/truetype/msttcorefonts/Arial_Bold.ttf",
             "C:\\Windows\\Fonts\\arialbd.ttf",
         ],
         "helvetica_bold": [
+            "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",  # Linux Docker
             "/System/Library/Fonts/Helvetica.ttc",
             "/Library/Fonts/Helvetica.ttc",
         ],
@@ -54,10 +57,17 @@ class ImageCompositor:
                 except Exception:
                     continue
 
-        # Fallback to default
+        # Fallback to Liberation Sans Bold if available
         try:
-            return ImageFont.truetype("Arial", size)
+            return ImageFont.truetype("/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf", size)
         except Exception:
+            pass
+
+        # Last resort - DejaVu Sans Bold
+        try:
+            return ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", size)
+        except Exception:
+            # Final fallback - default font (will be small)
             return ImageFont.load_default()
 
     def _wrap_text(self, text: str, font: ImageFont.FreeTypeFont, max_width: int) -> list[str]:
@@ -82,6 +92,43 @@ class ImageCompositor:
             lines.append(' '.join(current_line))
 
         return lines
+
+    def _calculate_optimal_font_size(
+        self,
+        text: str,
+        max_font_size: int,
+        min_font_size: int,
+        max_width: int,
+        max_height: int,
+        font_name: str,
+    ) -> tuple[ImageFont.FreeTypeFont, list[str]]:
+        """
+        Calculate optimal font size to fit text within constraints.
+        Dynamically reduces font size until text fits.
+
+        Returns:
+            (font, wrapped_lines)
+        """
+        # Try sizes from max down to min, stepping by 2 for performance
+        for size in range(max_font_size, min_font_size - 1, -2):
+            font = self._find_font(font_name, size)
+            lines = self._wrap_text(text, font, max_width)
+
+            # Calculate total height needed
+            total_height = 0
+            for line in lines:
+                bbox = font.getbbox(line)
+                line_height = bbox[3] - bbox[1]
+                total_height += line_height + 5  # 5px line spacing
+
+            # If it fits, return this size
+            if total_height <= max_height:
+                return font, lines
+
+        # If nothing fits, use minimum size anyway
+        font = self._find_font(font_name, min_font_size)
+        lines = self._wrap_text(text, font, max_width)
+        return font, lines
 
     def _draw_text_with_outline(
         self,
@@ -163,17 +210,26 @@ class ImageCompositor:
             width, height = img.size
             max_text_width = width - (padding * 2)
 
-            # Load fonts
-            hook_font = self._find_font(font_name, hook_font_size)
-            body_font = self._find_font(font_name, body_font_size)
-            cta_font = self._find_font(font_name, cta_font_size)
+            # Define safe zones - top 30% and bottom 30% of image
+            # This leaves the middle 40% clear for faces/subjects
+            top_zone_height = int(height * 0.30) - padding
+            bottom_zone_height = int(height * 0.30) - padding
+            bottom_zone_start = int(height * 0.70)
 
-            # Draw hook text at top
+            # Calculate adaptive font sizes for hook text (top zone)
             if hook_text:
-                lines = self._wrap_text(hook_text.upper(), hook_font, max_text_width)
-                y_offset = padding
+                hook_font, hook_lines = self._calculate_optimal_font_size(
+                    text=hook_text.upper(),
+                    max_font_size=hook_font_size,
+                    min_font_size=max(24, hook_font_size // 3),  # At least 24pt, or 1/3 of requested
+                    max_width=max_text_width,
+                    max_height=top_zone_height,
+                    font_name=font_name,
+                )
 
-                for line in lines:
+                # Draw hook text at top
+                y_offset = padding
+                for line in hook_lines:
                     bbox = hook_font.getbbox(line)
                     text_width = bbox[2] - bbox[0]
                     x = (width - text_width) // 2
@@ -184,31 +240,45 @@ class ImageCompositor:
                     )
                     y_offset += bbox[3] - bbox[1] + 10
 
-            # Draw body and CTA at bottom
-            bottom_texts = []
+            # Calculate adaptive font sizes for body and CTA (bottom zone)
+            # Combine body and CTA to calculate together
+            bottom_text_parts = []
             if body_text:
-                bottom_texts.append((body_text, body_font, body_font_size))
+                bottom_text_parts.append((body_text, body_font_size))
             if cta_text:
-                bottom_texts.append((cta_text, cta_font, cta_font_size))
+                bottom_text_parts.append((cta_text.upper(), cta_font_size))
 
-            if bottom_texts:
-                # Calculate total height needed for bottom texts
-                total_height = 0
+            if bottom_text_parts:
+                # Calculate optimal sizes for each text part
                 text_blocks = []
+                remaining_height = bottom_zone_height
 
-                for text, font, _ in bottom_texts:
-                    lines = self._wrap_text(text, font, max_text_width)
-                    block_height = 0
+                for text, max_size in bottom_text_parts:
+                    # Allocate proportional space based on font size
+                    allocated_height = int(remaining_height * (max_size / sum(fs for _, fs in bottom_text_parts)))
+
+                    font, lines = self._calculate_optimal_font_size(
+                        text=text,
+                        max_font_size=max_size,
+                        min_font_size=max(20, max_size // 3),  # At least 20pt
+                        max_width=max_text_width,
+                        max_height=allocated_height,
+                        font_name=font_name,
+                    )
+                    text_blocks.append((lines, font))
+
+                # Calculate total actual height needed
+                total_height = 0
+                for lines, font in text_blocks:
                     for line in lines:
                         bbox = font.getbbox(line)
-                        block_height += bbox[3] - bbox[1] + 5
-                    text_blocks.append((lines, font, block_height))
-                    total_height += block_height + 20
+                        total_height += bbox[3] - bbox[1] + 5
+                    total_height += 15  # Spacing between blocks
 
-                # Start from bottom
+                # Start from bottom, working upward
                 y_offset = height - padding - total_height
 
-                for lines, font, _ in text_blocks:
+                for lines, font in text_blocks:
                     for line in lines:
                         bbox = font.getbbox(line)
                         text_width = bbox[2] - bbox[0]
@@ -219,7 +289,7 @@ class ImageCompositor:
                             fill=text_color, outline=outline_color, outline_width=outline_width
                         )
                         y_offset += bbox[3] - bbox[1] + 5
-                    y_offset += 15
+                    y_offset += 15  # Space between body and CTA
 
             # Save to bytes
             output = io.BytesIO()
