@@ -109,8 +109,8 @@ class ImageCompositor:
         Returns:
             (font, wrapped_lines)
         """
-        # Try sizes from max down to min, stepping by 2 for performance
-        for size in range(max_font_size, min_font_size - 1, -2):
+        # Try sizes from max down to min, stepping by 1 for best fit
+        for size in range(max_font_size, min_font_size - 1, -1):
             font = self._find_font(font_name, size)
             lines = self._wrap_text(text, font, max_width)
 
@@ -210,18 +210,18 @@ class ImageCompositor:
             width, height = img.size
             max_text_width = width - (padding * 2)
 
-            # Define safe zones - top 30% and bottom 30% of image
-            # This leaves the middle 40% clear for faces/subjects
-            top_zone_height = int(height * 0.30) - padding
-            bottom_zone_height = int(height * 0.30) - padding
-            bottom_zone_start = int(height * 0.70)
+            # Define safe zones - top 35% and bottom 35% of image
+            # This leaves the middle 30% clear for faces/subjects
+            top_zone_height = int(height * 0.35) - padding
+            bottom_zone_height = int(height * 0.35) - padding
+            bottom_zone_start = int(height * 0.65)
 
             # Calculate adaptive font sizes for hook text (top zone)
             if hook_text:
                 hook_font, hook_lines = self._calculate_optimal_font_size(
                     text=hook_text.upper(),
                     max_font_size=hook_font_size,
-                    min_font_size=max(24, hook_font_size // 3),  # At least 24pt, or 1/3 of requested
+                    min_font_size=max(48, hook_font_size // 2),  # At least 48pt, or 1/2 of requested
                     max_width=max_text_width,
                     max_height=top_zone_height,
                     font_name=font_name,
@@ -260,7 +260,7 @@ class ImageCompositor:
                     font, lines = self._calculate_optimal_font_size(
                         text=text,
                         max_font_size=max_size,
-                        min_font_size=max(20, max_size // 3),  # At least 20pt
+                        min_font_size=max(32, max_size // 2),  # At least 32pt, or 1/2 of requested
                         max_width=max_text_width,
                         max_height=allocated_height,
                         font_name=font_name,
