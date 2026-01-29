@@ -221,7 +221,7 @@ class ImageCompositor:
                 hook_font, hook_lines = self._calculate_optimal_font_size(
                     text=hook_text.upper(),
                     max_font_size=hook_font_size,
-                    min_font_size=max(48, hook_font_size // 2),  # At least 48pt, or 1/2 of requested
+                    min_font_size=max(64, int(hook_font_size * 0.6)),  # At least 64pt, or 60% of requested
                     max_width=max_text_width,
                     max_height=top_zone_height,
                     font_name=font_name,
@@ -260,7 +260,7 @@ class ImageCompositor:
                     font, lines = self._calculate_optimal_font_size(
                         text=text,
                         max_font_size=max_size,
-                        min_font_size=max(32, max_size // 2),  # At least 32pt, or 1/2 of requested
+                        min_font_size=max(38, int(max_size * 0.6)),  # At least 38pt, or 60% of requested
                         max_width=max_text_width,
                         max_height=allocated_height,
                         font_name=font_name,
