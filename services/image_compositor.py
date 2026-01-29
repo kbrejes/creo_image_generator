@@ -241,37 +241,74 @@ class ImageCompositor:
                     )
                     y_offset += bbox[3] - bbox[1] + 15  # Line spacing for hook
 
-            # Body and CTA at bottom
-            text_blocks = []
+            # Check if this is a white/blank background (no AI image with faces)
+            is_white_bg = not image_source or image_source.lower() in ("white", "blank", "none", "")
 
-            if body_text:
-                body_font = self._find_font(font_name, BODY_SIZE)
-                body_lines = self._wrap_text(body_text, body_font, max_text_width)
-                text_blocks.append((body_lines, body_font))
+            # For white backgrounds, text can start right after hook
+            # For AI backgrounds, enforce safe zone (middle 30% clear for faces)
+            if is_white_bg:
+                # Calculate where hook text ends
+                hook_end_y = padding
+                if hook_text:
+                    hook_font = self._find_font(font_name, HOOK_SIZE)
+                    hook_lines = self._wrap_text(hook_text.upper(), hook_font, max_text_width)
+                    for line in hook_lines:
+                        bbox = hook_font.getbbox(line)
+                        hook_end_y += bbox[3] - bbox[1] + 15
+                min_body_y = hook_end_y + 40  # Some spacing after hook
+            else:
+                min_body_y = bottom_zone_start + padding  # Safe zone for AI backgrounds
 
-            if cta_text:
-                cta_font = self._find_font(font_name, CTA_SIZE)
-                cta_lines = self._wrap_text(cta_text.upper(), cta_font, max_text_width)
-                text_blocks.append((cta_lines, cta_font))
+            # Maximum Y where text can end (with padding from bottom)
+            max_bottom_y = height - padding
 
-            if text_blocks:
+            # Available height for bottom text
+            available_height = max_bottom_y - min_body_y
 
-                # Calculate total actual height needed
-                total_height = 0
-                for i, (lines, font) in enumerate(text_blocks):
-                    for line in lines:
-                        bbox = font.getbbox(line)
-                        total_height += bbox[3] - bbox[1] + 12  # Line spacing
-                    # Only add spacing between blocks, not after last block
-                    if i < len(text_blocks) - 1:
-                        total_height += 40  # Spacing between body and CTA blocks
+            # Body and CTA at bottom - with dynamic font sizing to fit
+            if body_text or cta_text:
+                # Try current font sizes, reduce if needed to fit
+                current_body_size = BODY_SIZE
+                current_cta_size = CTA_SIZE
+                MIN_FONT_SIZE = 28  # Don't go smaller than this
 
-                # Start from bottom, working upward
-                # Ensure we don't go above the bottom zone start (65% of image)
-                y_offset = height - padding - total_height
-                min_y = bottom_zone_start + padding  # Don't overlap with middle zone
-                if y_offset < min_y:
-                    y_offset = min_y  # Force text to stay in bottom zone
+                while current_body_size >= MIN_FONT_SIZE:
+                    text_blocks = []
+                    total_height = 0
+
+                    if body_text:
+                        body_font = self._find_font(font_name, current_body_size)
+                        body_lines = self._wrap_text(body_text, body_font, max_text_width)
+                        text_blocks.append((body_lines, body_font))
+                        for line in body_lines:
+                            bbox = body_font.getbbox(line)
+                            total_height += bbox[3] - bbox[1] + 12
+
+                    if cta_text:
+                        # Scale CTA proportionally
+                        cta_size = int(current_cta_size * current_body_size / BODY_SIZE)
+                        cta_font = self._find_font(font_name, max(cta_size, MIN_FONT_SIZE))
+                        cta_lines = self._wrap_text(cta_text.upper(), cta_font, max_text_width)
+                        text_blocks.append((cta_lines, cta_font))
+                        if body_text:
+                            total_height += 40  # Spacing between body and CTA
+                        for line in cta_lines:
+                            bbox = cta_font.getbbox(line)
+                            total_height += bbox[3] - bbox[1] + 12
+
+                    # Check if it fits
+                    if total_height <= available_height:
+                        break
+
+                    # Reduce font size and try again
+                    current_body_size -= 3
+
+                # Position text from bottom, working upward
+                y_offset = max_bottom_y - total_height
+
+                # Ensure we don't go above minimum (for AI backgrounds with safe zone)
+                if y_offset < min_body_y:
+                    y_offset = min_body_y
 
                 for i, (lines, font) in enumerate(text_blocks):
                     for line in lines:
