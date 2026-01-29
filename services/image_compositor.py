@@ -219,98 +219,52 @@ class ImageCompositor:
 
             # Uniform font sizes - max 30% difference between any two
             # CTA is largest, hook medium, body smallest
-            # All sizes increased 25% for better readability
             BODY_SIZE = 55
             HOOK_SIZE = 65  # 18% larger than body
             CTA_SIZE = 70   # 27% larger than body, largest
-
-            # Draw hook text at top
-            if hook_text:
-                hook_font = self._find_font(font_name, HOOK_SIZE)
-                hook_lines = self._wrap_text(hook_text.upper(), hook_font, max_text_width)
-
-                y_offset = padding
-                for line in hook_lines:
-                    bbox = hook_font.getbbox(line)
-                    text_width = bbox[2] - bbox[0]
-                    x = (width - text_width) // 2
-
-                    self._draw_text_with_outline(
-                        draw, (x, y_offset), line, hook_font,
-                        fill=text_color, outline=outline_color, outline_width=outline_width
-                    )
-                    y_offset += bbox[3] - bbox[1] + 15  # Line spacing for hook
+            MIN_FONT_SIZE = 28
 
             # Check if this is a white/blank background (no AI image with faces)
             is_white_bg = not image_source or image_source.lower() in ("white", "blank", "none", "")
 
-            # For white backgrounds, text can start right after hook
-            # For AI backgrounds, enforce safe zone (middle 30% clear for faces)
             if is_white_bg:
-                # Calculate where hook text ends
-                hook_end_y = padding
+                # === WHITE BACKGROUND: Even distribution of all text blocks ===
+                # Calculate heights for all blocks first, then distribute evenly
+
+                all_blocks = []  # [(lines, font, block_height), ...]
+
+                # Hook block
                 if hook_text:
                     hook_font = self._find_font(font_name, HOOK_SIZE)
                     hook_lines = self._wrap_text(hook_text.upper(), hook_font, max_text_width)
-                    for line in hook_lines:
-                        bbox = hook_font.getbbox(line)
-                        hook_end_y += bbox[3] - bbox[1] + 15
-                min_body_y = hook_end_y + 40  # Some spacing after hook
-            else:
-                min_body_y = bottom_zone_start + padding  # Safe zone for AI backgrounds
+                    hook_height = sum(hook_font.getbbox(line)[3] - hook_font.getbbox(line)[1] + 10 for line in hook_lines)
+                    all_blocks.append((hook_lines, hook_font, hook_height, 10))
 
-            # Maximum Y where text can end (with padding from bottom)
-            max_bottom_y = height - padding
+                # Body block
+                if body_text:
+                    body_font = self._find_font(font_name, BODY_SIZE)
+                    body_lines = self._wrap_text(body_text, body_font, max_text_width)
+                    body_height = sum(body_font.getbbox(line)[3] - body_font.getbbox(line)[1] + 12 for line in body_lines)
+                    all_blocks.append((body_lines, body_font, body_height, 12))
 
-            # Available height for bottom text
-            available_height = max_bottom_y - min_body_y
+                # CTA block
+                if cta_text:
+                    cta_font = self._find_font(font_name, CTA_SIZE)
+                    cta_lines = self._wrap_text(cta_text.upper(), cta_font, max_text_width)
+                    cta_height = sum(cta_font.getbbox(line)[3] - cta_font.getbbox(line)[1] + 10 for line in cta_lines)
+                    all_blocks.append((cta_lines, cta_font, cta_height, 10))
 
-            # Body and CTA at bottom - with dynamic font sizing to fit
-            if body_text or cta_text:
-                # Try current font sizes, reduce if needed to fit
-                current_body_size = BODY_SIZE
-                current_cta_size = CTA_SIZE
-                MIN_FONT_SIZE = 28  # Don't go smaller than this
+                # Calculate total text height and remaining space
+                total_text_height = sum(block[2] for block in all_blocks)
+                available_space = height - (padding * 2) - total_text_height
 
-                while current_body_size >= MIN_FONT_SIZE:
-                    text_blocks = []
-                    total_height = 0
+                # Distribute space evenly between blocks (n blocks = n-1 gaps)
+                num_gaps = max(1, len(all_blocks) - 1)
+                gap_size = max(40, available_space // num_gaps) if available_space > 0 else 40
 
-                    if body_text:
-                        body_font = self._find_font(font_name, current_body_size)
-                        body_lines = self._wrap_text(body_text, body_font, max_text_width)
-                        text_blocks.append((body_lines, body_font))
-                        for line in body_lines:
-                            bbox = body_font.getbbox(line)
-                            total_height += bbox[3] - bbox[1] + 12
-
-                    if cta_text:
-                        # Scale CTA proportionally
-                        cta_size = int(current_cta_size * current_body_size / BODY_SIZE)
-                        cta_font = self._find_font(font_name, max(cta_size, MIN_FONT_SIZE))
-                        cta_lines = self._wrap_text(cta_text.upper(), cta_font, max_text_width)
-                        text_blocks.append((cta_lines, cta_font))
-                        if body_text:
-                            total_height += 40  # Spacing between body and CTA
-                        for line in cta_lines:
-                            bbox = cta_font.getbbox(line)
-                            total_height += bbox[3] - bbox[1] + 12
-
-                    # Check if it fits
-                    if total_height <= available_height:
-                        break
-
-                    # Reduce font size and try again
-                    current_body_size -= 3
-
-                # Position text from bottom, working upward
-                y_offset = max_bottom_y - total_height
-
-                # Ensure we don't go above minimum (for AI backgrounds with safe zone)
-                if y_offset < min_body_y:
-                    y_offset = min_body_y
-
-                for i, (lines, font) in enumerate(text_blocks):
+                # Draw all blocks with even spacing
+                y_offset = padding
+                for i, (lines, font, block_height, line_spacing) in enumerate(all_blocks):
                     for line in lines:
                         bbox = font.getbbox(line)
                         text_width = bbox[2] - bbox[0]
@@ -320,10 +274,83 @@ class ImageCompositor:
                             draw, (x, y_offset), line, font,
                             fill=text_color, outline=outline_color, outline_width=outline_width
                         )
-                        y_offset += bbox[3] - bbox[1] + 12  # Line spacing
-                    # Only add spacing between blocks, not after last block
-                    if i < len(text_blocks) - 1:
-                        y_offset += 40  # Space between body and CTA
+                        y_offset += bbox[3] - bbox[1] + line_spacing
+
+                    # Add gap after block (except last one)
+                    if i < len(all_blocks) - 1:
+                        y_offset += gap_size
+
+            else:
+                # === AI BACKGROUND: Hook at top, body+CTA at bottom (safe zone in middle) ===
+
+                # Draw hook text at top
+                if hook_text:
+                    hook_font = self._find_font(font_name, HOOK_SIZE)
+                    hook_lines = self._wrap_text(hook_text.upper(), hook_font, max_text_width)
+
+                    y_offset = padding
+                    for line in hook_lines:
+                        bbox = hook_font.getbbox(line)
+                        text_width = bbox[2] - bbox[0]
+                        x = (width - text_width) // 2
+
+                        self._draw_text_with_outline(
+                            draw, (x, y_offset), line, hook_font,
+                            fill=text_color, outline=outline_color, outline_width=outline_width
+                        )
+                        y_offset += bbox[3] - bbox[1] + 15
+
+                # Body and CTA at bottom
+                max_bottom_y = height - padding
+                min_body_y = bottom_zone_start + padding
+
+                if body_text or cta_text:
+                    current_body_size = BODY_SIZE
+
+                    while current_body_size >= MIN_FONT_SIZE:
+                        text_blocks = []
+                        total_height = 0
+
+                        if body_text:
+                            body_font = self._find_font(font_name, current_body_size)
+                            body_lines = self._wrap_text(body_text, body_font, max_text_width)
+                            text_blocks.append((body_lines, body_font))
+                            for line in body_lines:
+                                bbox = body_font.getbbox(line)
+                                total_height += bbox[3] - bbox[1] + 12
+
+                        if cta_text:
+                            cta_size = int(CTA_SIZE * current_body_size / BODY_SIZE)
+                            cta_font = self._find_font(font_name, max(cta_size, MIN_FONT_SIZE))
+                            cta_lines = self._wrap_text(cta_text.upper(), cta_font, max_text_width)
+                            text_blocks.append((cta_lines, cta_font))
+                            if body_text:
+                                total_height += 40
+                            for line in cta_lines:
+                                bbox = cta_font.getbbox(line)
+                                total_height += bbox[3] - bbox[1] + 12
+
+                        if total_height <= (max_bottom_y - min_body_y):
+                            break
+                        current_body_size -= 3
+
+                    y_offset = max_bottom_y - total_height
+                    if y_offset < min_body_y:
+                        y_offset = min_body_y
+
+                    for i, (lines, font) in enumerate(text_blocks):
+                        for line in lines:
+                            bbox = font.getbbox(line)
+                            text_width = bbox[2] - bbox[0]
+                            x = (width - text_width) // 2
+
+                            self._draw_text_with_outline(
+                                draw, (x, y_offset), line, font,
+                                fill=text_color, outline=outline_color, outline_width=outline_width
+                            )
+                            y_offset += bbox[3] - bbox[1] + 12
+                        if i < len(text_blocks) - 1:
+                            y_offset += 40
 
             # Save to bytes
             output = io.BytesIO()
