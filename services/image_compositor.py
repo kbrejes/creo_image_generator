@@ -44,6 +44,9 @@ class ImageCompositor:
             "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",  # Linux Docker
             "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",  # Fallback
         ],
+        "noto_emoji": [
+            "/usr/share/fonts/truetype/noto/NotoColorEmoji.ttf",  # Linux Docker
+        ],
     }
 
     # Ad size presets
@@ -80,8 +83,11 @@ class ImageCompositor:
         try:
             return ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", size)
         except Exception:
-            # Final fallback - default font (will be small)
-            return ImageFont.load_default()
+            # Final fallback - Noto Color Emoji for emoji support
+            try:
+                return ImageFont.truetype("/usr/share/fonts/truetype/noto/NotoColorEmoji.ttf", size)
+            except Exception:
+                return ImageFont.load_default()
 
     def _wrap_text(self, text: str, font: ImageFont.FreeTypeFont, max_width: int) -> list[str]:
         """Wrap text to fit within max_width."""

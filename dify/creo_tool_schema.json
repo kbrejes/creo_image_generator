@@ -1,0 +1,1275 @@
+{
+  "openapi": "3.0.2",
+  "info": {
+    "title": "Ad Creative Agent API",
+    "description": "
+## Ad Creative Agent - Tool API for Dify
+
+This API provides tools for AI-powered ad creative generation, designed to be used
+with Dify as the orchestration layer.
+
+### Available Tools
+
+**Image Generation**
+- `/tools/generate-image` - Generate images using various AI backends (DALL-E 3, Flux, SDXL, etc.)
+- `/tools/compare-backends` - Generate the same prompt with multiple backends for comparison
+
+**Reference Analysis**
+- `/tools/analyze-reference` - Analyze reference images for style, colors, composition
+- `/tools/search-references` - Search the web for reference images
+
+**Copywriting**
+- `/tools/generate-copy` - Generate ad copy variations (headlines, body, CTAs)
+
+**Video Generation** (Phase 4)
+- `/tools/generate-video` - Generate short videos from prompts or images
+
+### Integration with Dify
+
+1. Deploy this API on a server accessible to your Dify instance
+2. In Dify, create a new tool using the OpenAPI import feature
+3. Point it to `{your-api-url}/tools/openapi.json`
+4. The tools will be available in your Dify workflows
+
+### Configuration
+
+Configure backends via environment variables in `.env`:
+- `OPENAI_API_KEY` - For DALL-E 3 and GPT-4 Vision
+- `REPLICATE_API_TOKEN` - For Flux and SDXL
+- `STABILITY_API_KEY` - For Stability AI
+- `IDEOGRAM_API_KEY` - For Ideogram
+- `SERPER_API_KEY` - For web search
+    ",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/v1/health": {
+      "get": {
+        "tags": [
+          "System"
+        ],
+        "summary": "Health Check",
+        "description": "Check service health and available backends.",
+        "operationId": "health_check_api_v1_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tools/generate-image": {
+      "post": {
+        "tags": [
+          "Image Generation"
+        ],
+        "summary": "Generate images from text prompt",
+        "description": "Generate one or more images using AI image generation models. Supports multiple backends: DALL-E 3, Flux, SDXL, Stability AI, Ideogram.",
+        "operationId": "api_generate_image_api_v1_tools_generate_image_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImageGenerationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImageGenerationResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tools/compare-backends": {
+      "post": {
+        "tags": [
+          "Image Generation"
+        ],
+        "summary": "Compare image generation backends",
+        "description": "Generate the same image with multiple backends for comparison.",
+        "operationId": "api_compare_backends_api_v1_tools_compare_backends_post",
+        "parameters": [
+          {
+            "name": "prompt",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Prompt"
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "1024x1024",
+              "title": "Size"
+            }
+          },
+          {
+            "name": "quality",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "standard",
+              "title": "Quality"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Backends"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Api Compare Backends Api V1 Tools Compare Backends Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tools/analyze-reference": {
+      "post": {
+        "tags": [
+          "Reference"
+        ],
+        "summary": "Analyze a reference image (Technical)",
+        "description": "Analyze a reference image to extract TECHNICAL data: dominant colors (hex), dimensions, format. Use Dify Vision for creative analysis (style/mood).",
+        "operationId": "api_analyze_reference_api_v1_tools_analyze_reference_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReferenceAnalysisRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReferenceAnalysisResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tools/search-references": {
+      "post": {
+        "tags": [
+          "Reference"
+        ],
+        "summary": "Search for reference images",
+        "description": "Search the web for reference images based on a query. Can search for specific ad styles, platforms, or general image references.",
+        "operationId": "api_search_references_api_v1_tools_search_references_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WebSearchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebSearchResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tools/generate-video": {
+      "post": {
+        "tags": [
+          "Video Generation"
+        ],
+        "summary": "Generate video from prompt or image",
+        "description": "Generate a short video from a text prompt or animate a source image. Note: This feature is planned for Phase 4.",
+        "operationId": "api_generate_video_api_v1_tools_generate_video_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VideoGenerationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VideoGenerationResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tools/compose-ad": {
+      "post": {
+        "tags": [
+          "Compositing"
+        ],
+        "summary": "Compose final ad with text overlay",
+        "description": "Add text overlay to generated image using Pillow. Fully automated.",
+        "operationId": "api_compose_ad_api_v1_tools_compose_ad_post",
+        "parameters": [
+          {
+            "name": "image_url",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Image Url"
+            }
+          },
+          {
+            "name": "hook_text",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Hook Text"
+            }
+          },
+          {
+            "name": "body_text",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Body Text"
+            }
+          },
+          {
+            "name": "cta_text",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Cta Text"
+            }
+          },
+          {
+            "name": "output_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "instagram_square",
+              "title": "Output Size"
+            }
+          },
+          {
+            "name": "font_name",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "impact",
+              "title": "Font Name"
+            }
+          },
+          {
+            "name": "hook_font_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 120,
+              "title": "Hook Font Size"
+            }
+          },
+          {
+            "name": "body_font_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 60,
+              "title": "Body Font Size"
+            }
+          },
+          {
+            "name": "cta_font_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 48,
+              "title": "Cta Font Size"
+            }
+          },
+          {
+            "name": "text_color",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Text Color"
+            }
+          },
+          {
+            "name": "cta_emoji",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Cta Emoji"
+            }
+          },
+          {
+            "name": "bold_hook",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Bold Hook"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tools/compose-batch": {
+      "post": {
+        "tags": [
+          "Compositing"
+        ],
+        "summary": "Compose multiple ads from variations",
+        "description": "Generate multiple ad creatives from a JSON array of copy variations.",
+        "operationId": "api_compose_batch_api_v1_tools_compose_batch_post",
+        "parameters": [
+          {
+            "name": "image_url",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Image Url"
+            }
+          },
+          {
+            "name": "variations_json",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Variations Json"
+            }
+          },
+          {
+            "name": "output_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "instagram_square",
+              "title": "Output Size"
+            }
+          },
+          {
+            "name": "text_color",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Text Color"
+            }
+          },
+          {
+            "name": "cta_emoji",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Cta Emoji"
+            }
+          },
+          {
+            "name": "bold_hook",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Bold Hook"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tools/openapi.json": {
+      "get": {
+        "tags": [
+          "System"
+        ],
+        "summary": "Get OpenAPI schema for Dify",
+        "description": "Returns the OpenAPI schema in a format suitable for Dify tool import.",
+        "operationId": "get_openapi_for_dify_api_v1_tools_openapi_json_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/": {
+      "get": {
+        "tags": [
+          "System"
+        ],
+        "summary": "Root",
+        "description": "Root endpoint with API info.",
+        "operationId": "root__get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ColorInfo": {
+        "properties": {
+          "hex": {
+            "type": "string",
+            "title": "Hex",
+            "description": "Hex color code"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name",
+            "description": "Human-readable color name"
+          },
+          "percentage": {
+            "type": "number",
+            "title": "Percentage",
+            "description": "Approximate percentage of image"
+          }
+        },
+        "type": "object",
+        "required": [
+          "hex",
+          "percentage"
+        ],
+        "title": "ColorInfo",
+        "description": "Information about a color in the image."
+      },
+      "GeneratedImage": {
+        "properties": {
+          "url": {
+            "type": "string",
+            "title": "Url",
+            "description": "URL to access the generated image"
+          },
+          "filename": {
+            "type": "string",
+            "title": "Filename",
+            "description": "Filename of the generated image"
+          },
+          "backend": {
+            "type": "string",
+            "title": "Backend",
+            "description": "Backend used to generate this image"
+          },
+          "revised_prompt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revised Prompt",
+            "description": "The prompt as revised by the backend (if applicable)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "url",
+          "filename",
+          "backend"
+        ],
+        "title": "GeneratedImage",
+        "description": "A single generated image."
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "HealthResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "description": "Service status"
+          },
+          "available_image_backends": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Available Image Backends",
+            "description": "Configured image backends"
+          },
+          "available_video_backends": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Available Video Backends",
+            "description": "Configured video backends"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "title": "HealthResponse",
+        "description": "Health check response."
+      },
+      "ImageGenerationRequest": {
+        "properties": {
+          "prompt": {
+            "type": "string",
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Prompt",
+            "description": "The prompt describing the image to generate"
+          },
+          "backend": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Backend",
+            "description": "Image generation backend to use (dalle3, flux, sdxl, stability, ideogram). If not specified, the best available backend will be chosen."
+          },
+          "size": {
+            "type": "string",
+            "title": "Size",
+            "description": "Image size in format WxH. Common sizes: 1024x1024, 1792x1024, 1024x1792",
+            "default": "1024x1024"
+          },
+          "style": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Style",
+            "description": "Style preset (e.g., 'vivid', 'natural' for DALL-E 3)"
+          },
+          "quality": {
+            "type": "string",
+            "title": "Quality",
+            "description": "Quality level (standard, hd)",
+            "default": "standard"
+          },
+          "num_images": {
+            "type": "integer",
+            "maximum": 4.0,
+            "minimum": 1.0,
+            "title": "Num Images",
+            "description": "Number of images to generate",
+            "default": 1
+          },
+          "negative_prompt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Negative Prompt",
+            "description": "What to avoid in the image (not supported by all backends)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "prompt"
+        ],
+        "title": "ImageGenerationRequest",
+        "description": "Request model for image generation."
+      },
+      "ImageGenerationResponse": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success",
+            "description": "Whether generation was successful"
+          },
+          "images": {
+            "items": {
+              "$ref": "#/components/schemas/GeneratedImage"
+            },
+            "type": "array",
+            "title": "Images",
+            "description": "List of generated images"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error",
+            "description": "Error message if failed"
+          },
+          "metadata": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Metadata",
+            "description": "Additional metadata about the generation"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success"
+        ],
+        "title": "ImageGenerationResponse",
+        "description": "Response model for image generation."
+      },
+      "ReferenceAnalysisRequest": {
+        "properties": {
+          "image_url": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2083,
+                "minLength": 1,
+                "format": "uri"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image Url",
+            "description": "URL of the reference image to analyze"
+          },
+          "image_base64": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image Base64",
+            "description": "Base64-encoded image data"
+          },
+          "analysis_type": {
+            "type": "string",
+            "enum": [
+              "full",
+              "style",
+              "colors",
+              "composition",
+              "text"
+            ],
+            "title": "Analysis Type",
+            "description": "Type of analysis to perform (Legacy parameter, now always technical)",
+            "default": "full"
+          },
+          "context": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Context",
+            "description": "Additional context (Ignored in technical mode)"
+          }
+        },
+        "type": "object",
+        "title": "ReferenceAnalysisRequest",
+        "description": "Request model for reference image analysis."
+      },
+      "ReferenceAnalysisResponse": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success",
+            "description": "Whether analysis was successful"
+          },
+          "style_description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Style Description",
+            "description": "Technical summary of image properties"
+          },
+          "dominant_colors": {
+            "items": {
+              "$ref": "#/components/schemas/ColorInfo"
+            },
+            "type": "array",
+            "title": "Dominant Colors",
+            "description": "Dominant colors in the image"
+          },
+          "composition_notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Composition Notes",
+            "description": "Dimensions and aspect ratio"
+          },
+          "text_detected": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Text Detected",
+            "description": "Whether text was detected (always false in technical mode)",
+            "default": false
+          },
+          "mood": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mood",
+            "description": "Overall mood (always Neutral in technical mode)"
+          },
+          "suggested_prompt_elements": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Suggested Prompt Elements",
+            "description": "Empty list (Creative suggestions moved to Dify)"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error",
+            "description": "Error message if failed"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success"
+        ],
+        "title": "ReferenceAnalysisResponse",
+        "description": "Response model for reference analysis."
+      },
+      "SearchResult": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "title": "Title",
+            "description": "Title of the result"
+          },
+          "url": {
+            "type": "string",
+            "title": "Url",
+            "description": "URL of the page"
+          },
+          "image_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image Url",
+            "description": "Direct image URL"
+          },
+          "thumbnail_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Thumbnail Url",
+            "description": "Thumbnail URL"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source",
+            "description": "Source website"
+          }
+        },
+        "type": "object",
+        "required": [
+          "title",
+          "url"
+        ],
+        "title": "SearchResult",
+        "description": "A single search result."
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      },
+      "VideoGenerationRequest": {
+        "properties": {
+          "prompt": {
+            "type": "string",
+            "title": "Prompt",
+            "description": "The prompt describing the video to generate"
+          },
+          "source_image_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Image Url",
+            "description": "URL of image to animate (for image-to-video)"
+          },
+          "backend": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Backend",
+            "description": "Video generation backend (runway, pika, kling)"
+          },
+          "duration": {
+            "type": "integer",
+            "maximum": 16.0,
+            "minimum": 2.0,
+            "title": "Duration",
+            "description": "Video duration in seconds",
+            "default": 4
+          },
+          "aspect_ratio": {
+            "type": "string",
+            "title": "Aspect Ratio",
+            "description": "Aspect ratio (16:9, 9:16, 1:1)",
+            "default": "16:9"
+          }
+        },
+        "type": "object",
+        "required": [
+          "prompt"
+        ],
+        "title": "VideoGenerationRequest",
+        "description": "Request model for video generation."
+      },
+      "VideoGenerationResponse": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success",
+            "description": "Whether generation was successful"
+          },
+          "video_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Video Url",
+            "description": "URL to the generated video"
+          },
+          "thumbnail_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Thumbnail Url",
+            "description": "URL to video thumbnail"
+          },
+          "duration": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration",
+            "description": "Actual video duration"
+          },
+          "backend": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Backend",
+            "description": "Backend used"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error",
+            "description": "Error message if failed"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success"
+        ],
+        "title": "VideoGenerationResponse",
+        "description": "Response model for video generation."
+      },
+      "WebSearchRequest": {
+        "properties": {
+          "query": {
+            "type": "string",
+            "title": "Query",
+            "description": "Search query for finding reference images"
+          },
+          "num_results": {
+            "type": "integer",
+            "maximum": 20.0,
+            "minimum": 1.0,
+            "title": "Num Results",
+            "description": "Number of results to return",
+            "default": 5
+          },
+          "image_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image Type",
+            "description": "Type of images (photo, illustration, etc.)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "query"
+        ],
+        "title": "WebSearchRequest",
+        "description": "Request model for web image search."
+      },
+      "WebSearchResponse": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success",
+            "description": "Whether search was successful"
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/SearchResult"
+            },
+            "type": "array",
+            "title": "Results",
+            "description": "Search results"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error",
+            "description": "Error message if failed"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success"
+        ],
+        "title": "WebSearchResponse",
+        "description": "Response model for web search."
+      }
+    }
+  }
+}

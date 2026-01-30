@@ -1,256 +1,173 @@
-# Ad Creative Agent - Dify Workflow Configuration
-#
-# This file documents the recommended Dify workflow setup.
-# Import this into your Dify instance and configure the HTTP tool endpoints.
-#
-# Prerequisites:
-# 1. Deploy the FastAPI backend (main.py) on a server
-# 2. Note the API URL (e.g., http://your-server:8000)
-# 3. Create the workflow in Dify following this structure
+app:
+  description: Auto-generates ad creatives using your self-hosted API
+  icon: 🎨
+  icon_background: '#FFEAD5'
+  mode: workflow
+  name: Ad Creative Agent
 
 workflow:
-  name: "Ad Creative Agent"
-  description: "AI-powered ad creative generation with human-like decision making"
-  version: "1.0.0"
+  graph:
+    edges:
+    - source: start
+      target: analyze_brief
+    - source: analyze_brief
+      target: generate_copy
+    - source: generate_copy
+      target: generate_image
+    - source: generate_image
+      target: batch_compose
+    - source: batch_compose
+      target: end_node
 
-# ===================
-# System Prompt for LLM Nodes
-# ===================
-# Use this system prompt in your LLM nodes for advertising expertise
+    nodes:
+    - data:
+        title: Start
+        type: start
+        variables:
+        - label: Ad Request
+          max_length: 1000
+          options: []
+          required: true
+          type: paragraph
+          variable: query
+      id: start
+      position:
+        x: 80
+        y: 282
+      type: start
 
-system_prompts:
-  creative_director: |
-    You are an expert Creative Director specializing in digital advertising. You have deep knowledge of:
+    - data:
+        model:
+          completion_params:
+            temperature: 0.7
+          mode: chat
+          name: gpt-4o
+          provider: openai
+        prompt_template:
+        - role: system
+          text: |
+            You are an expert Creative Director. Analyze the user's request.
 
-    ## Advertising Frameworks
-    - AIDA (Attention, Interest, Desire, Action)
-    - PAS (Problem-Agitate-Solution)
-    - BAB (Before-After-Bridge)
+            Extract:
+            1. Product Name
+            2. Target Audience
+            3. Visual Style (Cyberpunk, Minimalist, etc.)
+            4. Platform (Instagram, LinkedIn, etc.)
+            5. Number of variations requested (default to 3)
 
-    ## Visual Design Principles
-    - Rule of thirds for composition
-    - Visual hierarchy and focal points
-    - Color psychology by industry:
-      - Tech: Blues, purples (trust, innovation)
-      - Health: Greens, whites (natural, clean)
-      - Luxury: Black, gold (sophistication)
-      - Food: Reds, oranges, yellows (appetite, energy)
-      - Finance: Blues, greens (trust, growth)
+            Output ONLY valid JSON:
+            {
+              "platform": "instagram_square",
+              "num_variations": 3,
+              "text_color": "white",
+              "prompt": "Detailed image generation prompt...",
+              "negative_prompt": "text, bad quality, blurry"
+            }
+        - role: user
+          text: '{{#start.query#}}'
+        title: Analyze Brief
+      id: analyze_brief
+      position:
+        x: 380
+        y: 282
+      type: llm
 
-    ## Platform Best Practices
-    - Instagram: Square (1:1) or vertical (4:5), lifestyle-focused, minimal text
-    - Facebook: Horizontal (1.91:1) for feed, emotional storytelling
-    - Google Display: Various sizes, clear CTA, brand consistency
-    - LinkedIn: Professional, value-focused, 1.91:1 ratio
-    - TikTok: Vertical (9:16), dynamic, trend-aware
+    - data:
+        model:
+          completion_params:
+            temperature: 0.7
+          mode: chat
+          name: gpt-4o
+          provider: openai
+        prompt_template:
+        - role: system
+          text: |
+            Generate ad copy variations based on this brief.
 
-    ## Your Process
-    1. Understand the brief deeply - ask clarifying questions if needed
-    2. Research and gather references when helpful
-    3. Develop a creative concept with clear rationale
-    4. Create the visual with optimal composition and colors
-    5. Critique your own work and refine if needed
-    6. Explain your creative decisions to the user
+            Brief: {{#analyze_brief.text#}}
 
-    Always think step-by-step and explain your creative reasoning.
+            Output ONLY valid JSON array of objects:
+            [
+              {"hook": "Hook 1", "body": "Body 1", "cta": "CTA 1"},
+              {"hook": "Hook 2", "body": "Body 2", "cta": "CTA 2"}
+            ]
+        title: Generate Copy
+      id: generate_copy
+      position:
+        x: 680
+        y: 282
+      type: llm
 
-  prompt_engineer: |
-    You are an expert at crafting prompts for AI image generation. Your job is to translate creative briefs into optimal image generation prompts.
+    - data:
+        authorization:
+          config: null
+          type: no-auth
+        body:
+          data: |
+            {
+              "prompt": "{{#analyze_brief.json.prompt#}}",
+              "backend": "flux",
+              "size": "1024x1024",
+              "num_images": 1
+            }
+          type: json
+        headers:
+          Content-Type: application/json
+        method: post
+        timeout:
+          connect: 10
+          read: 60
+          write: 10
+        title: Generate Image
+        url: http://185.241.151.190:8000/api/v1/tools/generate-image
+        variables: []
+      id: generate_image
+      position:
+        x: 980
+        y: 282
+      type: http-request
 
-    ## Prompt Structure
-    1. Subject: What is the main focus?
-    2. Style: Photorealistic, illustrated, 3D render, etc.
-    3. Composition: Framing, angle, layout
-    4. Lighting: Natural, studio, dramatic, soft
-    5. Color palette: Specific colors to emphasize
-    6. Mood: Emotional tone
-    7. Technical: Quality modifiers
+    - data:
+        authorization:
+          config: null
+          type: no-auth
+        body:
+          data: ''
+          type: none
+        headers:
+          Content-Type: application/json
+        method: post
+        params:
+        - key: image_url
+          value: '{{#generate_image.body.images[0].url#}}'
+        - key: variations_json
+          value: '{{#generate_copy.text#}}'
+        - key: output_size
+          value: '{{#analyze_brief.json.platform#}}'
+        - key: text_color
+          value: '{{#analyze_brief.json.text_color#}}'
+        timeout:
+          connect: 10
+          read: 60
+          write: 10
+        title: Batch Compose
+        url: http://185.241.151.190:8000/api/v1/tools/compose-batch
+        variables: []
+      id: batch_compose
+      position:
+        x: 1280
+        y: 282
+      type: http-request
 
-    ## Best Practices
-    - Be specific and descriptive
-    - Use concrete visual language
-    - Include style references when helpful
-    - Specify what NOT to include (for backends that support it)
-    - Consider the target platform's requirements
-
-    ## Example Transformation
-    Brief: "Instagram ad for a new coffee brand targeting young professionals"
-
-    Prompt: "Professional product photography of artisanal coffee cup on minimalist desk, morning sunlight streaming through window, MacBook and plant in soft focus background, warm amber and cream color palette, clean modern aesthetic, Instagram square format, commercial quality, shallow depth of field"
-
-# ===================
-# Workflow Nodes
-# ===================
-
-nodes:
-  # Node 1: Start
-  - id: start
-    type: start
-    description: "Receives user message"
-    outputs:
-      - user_input
-
-  # Node 2: Brief Analysis (LLM)
-  - id: analyze_brief
-    type: llm
-    description: "Understand what the user wants to create"
-    config:
-      model: "claude-3-5-sonnet"
-      system_prompt: "{{system_prompts.creative_director}}"
-      user_prompt: |
-        Analyze this creative request and extract key information:
-
-        User Request: {{user_input}}
-
-        Identify and output in JSON format:
-        {
-          "product_or_subject": "what is being advertised",
-          "target_audience": "who is the audience",
-          "platform": "target platform if mentioned",
-          "style_preferences": "any style mentioned",
-          "reference_needed": true/false,
-          "has_reference_url": true/false,
-          "reference_url": "URL if provided",
-          "num_variations": "number of creatives requested (default 1)",
-          "creative_direction": "your recommended approach",
-          "suggested_prompt": "initial image generation prompt"
-        }
-    outputs:
-      - brief_analysis
-
-  # ... (Reference Analysis Nodes 3-6 remain same) ...
-
-  # Node 7: Craft Generation Prompt & Copy (LLM)
-  - id: craft_prompt
-    type: llm
-    description: "Create the optimal image generation prompt and copy variations"
-    config:
-      model: "claude-3-5-sonnet"
-      system_prompt: "{{system_prompts.prompt_engineer}}"
-      user_prompt: |
-        Create an image generation prompt and {{brief_analysis.num_variations}} ad copy variations based on:
-
-        Brief Analysis: {{brief_analysis}}
-        Reference Analysis: {{reference_analysis | default: "No reference provided"}}
-        Search Results: {{search_results | default: "No search performed"}}
-
-        Output a JSON with:
-        {
-          "prompt": "the full image generation prompt",
-          "negative_prompt": "what to avoid",
-          "recommended_backend": "dalle3|flux|ideogram|stability",
-          "size": "1024x1024|1792x1024|1024x1792",
-          "copy_variations": [
-            {"hook": "Main Headline", "body": "Body text", "cta": "Call to action"},
-            ... (generate {{brief_analysis.num_variations}} variations)
-          ],
-          "text_color_preference": "white|black",
-          "rationale": "why these choices"
-        }
-    outputs:
-      - generation_config
-
-  # Node 8: Generate Base Image (HTTP Tool)
-  - id: generate_image_node
-    type: http_tool
-    description: "Generate the base image"
-    config:
-      method: POST
-      url: "{{API_BASE_URL}}/tools/generate-image"
-      body:
-        prompt: "{{generation_config.prompt}}"
-        backend: "{{generation_config.recommended_backend}}"
-        size: "{{generation_config.size}}"
-        negative_prompt: "{{generation_config.negative_prompt}}"
-        num_images: 1
-    outputs:
-      - generated_image
-
-  # Node 9: Batch Compose (HTTP Tool)
-  - id: batch_compose_node
-    type: http_tool
-    description: "Add text overlays for all variations"
-    config:
-      method: POST
-      url: "{{API_BASE_URL}}/tools/compose-batch"
-      body:
-        image_url: "{{generated_image.images[0].url}}"
-        variations_json: "{{generation_config.copy_variations | json}}"
-        output_size: "instagram_square"
-        text_color: "{{generation_config.text_color_preference}}"
-    outputs:
-      - final_creatives
-
-  # Node 10: Prepare Final Response (LLM)
-  - id: prepare_response
-    type: llm
-    description: "Create the final response for the user"
-    config:
-      model: "claude-3-5-sonnet"
-      user_prompt: |
-        Create a friendly response for the user presenting their {{brief_analysis.num_variations}} new ad creatives.
-
-        Base Image: {{generated_image.images[0].url}}
-        
-        Final Creatives:
-        {{final_creatives.creatives}}
-
-        For each creative, explain why that specific hook/copy angle works.
-        Offer to generate more or refine specific ones.
-    outputs:
-      - final_response
-
-  # Node 11: End
-  - id: end
-    type: end
-    description: "Return response to user"
-    output: "{{final_response}}"
-
-# ===================
-# Variables
-# ===================
-
-variables:
-  API_BASE_URL: "https://creo.yourads.io"  # Replace with your deployed API URL
-  iteration_count: 0
-
-# ===================
-# Setup Instructions
-# ===================
-
-setup_instructions: |
-  ## How to Set Up This Workflow in Dify
-
-  ### Step 1: Deploy the API Backend
-  ```bash
-  cd creo_image_generator
-  pip install -r requirements.txt
-  cp .env.example .env
-  # Edit .env with your API keys
-  python main.py
-  ```
-
-  ### Step 2: Create HTTP Tools in Dify
-  In your Dify instance:
-  1. Go to Tools > Create Tool
-  2. Choose "Import from URL"
-  3. Enter: http://your-api-url/tools/openapi.json
-  4. This will import all available tools
-
-  ### Step 3: Create the Workflow
-  1. Create new Agent/Workflow
-  2. Add LLM nodes with the system prompts above
-  3. Add HTTP tool nodes pointing to your API
-  4. Connect nodes as shown in the workflow structure
-  5. Configure variables (API_BASE_URL)
-
-  ### Step 4: Test
-  1. Start a conversation
-  2. Try: "Create an Instagram ad for a new organic coffee brand targeting young professionals"
-  3. The agent should analyze, generate, critique, and present the result
-
-  ### Tips
-  - Use Claude or GPT-4 for best results in LLM nodes
-  - Enable vision capabilities for the critique node
-  - Adjust iteration limits based on your needs
-  - Monitor API costs across backends
+    - data:
+        outputs:
+        - value_selector:
+          - batch_compose
+          - body
+          variable: result
+        title: End
+      id: end_node
+      position:
+        x: 1580
+        y: 282
+      type: end

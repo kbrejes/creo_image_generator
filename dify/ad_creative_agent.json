@@ -1,0 +1,188 @@
+{
+  "app": {
+    "name": "Ad Creative Agent",
+    "description": "Auto-generates ad creatives using your self-hosted API",
+    "mode": "workflow",
+    "icon": "🎨",
+    "icon_background": "#FFEAD5"
+  },
+  "workflow": {
+    "graph": {
+      "nodes": [
+        {
+          "id": "start",
+          "position": { "x": 80, "y": 282 },
+          "type": "start",
+          "data": {
+            "title": "Start",
+            "variables": [
+              {
+                "label": "Input",
+                "variable": "query",
+                "type": "paragraph",
+                "required": true
+              }
+            ]
+          }
+        },
+        {
+          "id": "analyze_brief",
+          "position": { "x": 380, "y": 282 },
+          "type": "llm",
+          "data": {
+            "title": "Analyze Brief",
+            "model": {
+              "provider": "openai",
+              "name": "gpt-4-turbo",
+              "mode": "chat",
+              "completion_params": {}
+            },
+            "prompt_template": [
+              {
+                "role": "system",
+                "text": "You are an expert Creative Director. Analyze the user's request.
+
+Extract:
+1. Product Name
+2. Target Audience
+3. Visual Style (Cyberpunk, Minimalist, etc.)
+4. Platform (Instagram, LinkedIn, etc.)
+5. Number of variations requested (default to 3 if not specified)
+
+Output ONLY valid JSON:
+{
+  "product": "...",
+  "audience": "...",
+  "style": "...",
+  "platform": "instagram_square",
+  "num_variations": 3,
+  "text_color": "white",
+  "prompt": "Detailed image generation prompt...",
+  "negative_prompt": "text, bad quality, blurry"
+}"
+              },
+              {
+                "role": "user",
+                "text": "{{#start.query#}}"
+              }
+            ]
+          }
+        },
+        {
+          "id": "generate_copy",
+          "position": { "x": 680, "y": 282 },
+          "type": "llm",
+          "data": {
+            "title": "Generate Copy",
+            "model": {
+              "provider": "openai",
+              "name": "gpt-4-turbo",
+              "mode": "chat",
+              "completion_params": {}
+            },
+            "prompt_template": [
+              {
+                "role": "system",
+                "text": "Generate ad copy variations based on this brief.
+
+Brief: {{#analyze_brief.text#}}
+
+Output ONLY valid JSON array of objects:
+[
+  {"hook": "Punchy Hook 1", "body": "Short body text", "cta": "Shop Now"},
+  {"hook": "Punchy Hook 2", "body": "Short body text", "cta": "Learn More"}
+]
+
+Make sure to generate exactly the number of variations requested in the brief."
+              }
+            ]
+          }
+        },
+        {
+          "id": "generate_image_http",
+          "position": { "x": 980, "y": 282 },
+          "type": "http-request",
+          "data": {
+            "title": "Generate Base Image",
+            "method": "post",
+            "url": "http://185.241.151.190:8000/api/v1/tools/generate-image",
+            "headers": "Content-Type: application/json",
+            "body": {
+              "type": "json",
+              "data": "{
+  "prompt": "{{#analyze_brief.json.prompt#}}",
+  "backend": "flux",
+  "size": "1024x1024",
+  "num_images": 1
+}"
+            },
+            "timeout": {
+              "connect": 10,
+              "read": 60,
+              "write": 10
+            }
+          }
+        },
+        {
+          "id": "batch_compose_http",
+          "position": { "x": 1280, "y": 282 },
+          "type": "http-request",
+          "data": {
+            "title": "Batch Compose",
+            "method": "post",
+            "url": "http://185.241.151.190:8000/api/v1/tools/compose-batch",
+            "headers": "Content-Type: application/json",
+            "params": "image_url: {{#generate_image_http.body.images[0].url#}}
+variations_json: {{#generate_copy.text#}}
+output_size: {{#analyze_brief.json.platform#}}
+text_color: {{#analyze_brief.json.text_color#}}",
+            "body": {
+              "type": "none"
+            },
+            "timeout": {
+              "connect": 10,
+              "read": 60,
+              "write": 10
+            }
+          }
+        },
+        {
+          "id": "answer",
+          "position": { "x": 1580, "y": 282 },
+          "type": "end",
+          "data": {
+            "title": "End",
+            "outputs": [
+              {
+                "variable": "final_result",
+                "value_selector": ["batch_compose_http", "body"]
+              }
+            ]
+          }
+        }
+      ],
+      "edges": [
+        {
+          "source": "start",
+          "target": "analyze_brief"
+        },
+        {
+          "source": "analyze_brief",
+          "target": "generate_copy"
+        },
+        {
+          "source": "generate_copy",
+          "target": "generate_image_http"
+        },
+        {
+          "source": "generate_image_http",
+          "target": "batch_compose_http"
+        },
+        {
+          "source": "batch_compose_http",
+          "target": "answer"
+        }
+      ]
+    }
+  }
+}
