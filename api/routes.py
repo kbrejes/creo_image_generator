@@ -237,6 +237,8 @@ async def api_compose_ad(
     body_font_size: int = 60,
     cta_font_size: int = 48,
     text_color: str = "",
+    cta_emoji: str = "",
+    bold_hook: str = "",
 ):
     """Compose final ad with text overlay."""
     # Determine text and outline colors
@@ -248,6 +250,10 @@ async def api_compose_ad(
     else:
         actual_text_color = "white"
         outline_color = "black"
+
+    # Parse boolean toggles from string
+    use_cta_emoji = cta_emoji and "yes" in cta_emoji.lower()
+    use_bold_hook = not bold_hook or "yes" in bold_hook.lower()  # Default to yes
 
     compositor = ImageCompositor()
     return await compositor.compose(
@@ -262,6 +268,8 @@ async def api_compose_ad(
         cta_font_size=cta_font_size,
         text_color=actual_text_color,
         outline_color=outline_color,
+        cta_emoji=use_cta_emoji,
+        bold_hook=use_bold_hook,
     )
 
 

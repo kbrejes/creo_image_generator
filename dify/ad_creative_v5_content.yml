@@ -172,6 +172,20 @@ workflow:
               options:
                 - "flux"
                 - "sdxl"
+            - label: "Add pointing emoji to CTA 👇"
+              required: false
+              type: select
+              variable: cta_emoji
+              options:
+                - "No"
+                - "Yes"
+            - label: "Bold hook text"
+              required: false
+              type: select
+              variable: bold_hook
+              options:
+                - "Yes"
+                - "No"
         height: 54
         id: "1"
         position:
@@ -477,7 +491,7 @@ workflow:
           desc: Add text overlay to image
           headers: ""
           method: post
-          params: "image_url:{{#6.image_url#}}\nhook_text:{{#3.hook#}}\nbody_text:{{#3.body#}}\ncta_text:{{#3.cta#}}\noutput_size:instagram_square\nhook_font_size:120\nbody_font_size:42\ncta_font_size:48\ntext_color:{{#1.text_color#}}"
+          params: "image_url:{{#6.image_url#}}\nhook_text:{{#3.hook#}}\nbody_text:{{#3.body#}}\ncta_text:{{#3.cta#}}\noutput_size:instagram_square\nhook_font_size:120\nbody_font_size:42\ncta_font_size:48\ntext_color:{{#1.text_color#}}\ncta_emoji:{{#1.cta_emoji#}}\nbold_hook:{{#1.bold_hook#}}"
           timeout:
             connect: 60
             max_connect_timeout: 60

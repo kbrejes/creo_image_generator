@@ -13,6 +13,7 @@ class ImageCompositor:
 
     # Font paths (system fonts)
     FONT_PATHS = {
+        # Bold fonts
         "impact": [
             "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",  # Linux Docker
             "/System/Library/Fonts/Supplemental/Impact.ttf",  # macOS
@@ -30,6 +31,18 @@ class ImageCompositor:
             "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",  # Linux Docker
             "/System/Library/Fonts/Helvetica.ttc",
             "/Library/Fonts/Helvetica.ttc",
+        ],
+        # Regular fonts (non-bold)
+        "arial": [
+            "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",  # Linux Docker
+            "/System/Library/Fonts/Supplemental/Arial.ttf",  # macOS
+            "/Library/Fonts/Arial.ttf",
+            "/usr/share/fonts/truetype/msttcorefonts/Arial.ttf",  # Linux
+            "C:\\Windows\\Fonts\\arial.ttf",  # Windows
+        ],
+        "liberation": [
+            "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",  # Linux Docker
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",  # Fallback
         ],
     }
 
@@ -167,6 +180,8 @@ class ImageCompositor:
         outline_color: str = "black",
         outline_width: int = 3,
         padding: int = 40,
+        cta_emoji: bool = False,
+        bold_hook: bool = True,
     ) -> dict:
         """
         Compose an ad image with text overlays.
@@ -224,6 +239,17 @@ class ImageCompositor:
             CTA_SIZE = 70   # 27% larger than body, largest
             MIN_FONT_SIZE = 28
 
+            # Font selection: bold for hook (if enabled), regular for body/CTA
+            bold_font = "impact"  # Bold font for hook
+            regular_font = "liberation"  # Regular font for body/CTA
+            hook_font_name = bold_font if bold_hook else regular_font
+            body_font_name = regular_font
+            cta_font_name = regular_font
+
+            # Add emoji to CTA if enabled
+            if cta_emoji and cta_text:
+                cta_text = f"{cta_text} 👇"
+
             # Check if this is a white/blank background (no AI image with faces)
             is_white_bg = not image_source or image_source.lower() in ("white", "blank", "none", "")
 
@@ -233,23 +259,23 @@ class ImageCompositor:
 
                 all_blocks = []  # [(lines, font, block_height), ...]
 
-                # Hook block
+                # Hook block (bold if enabled, uppercase)
                 if hook_text:
-                    hook_font = self._find_font(font_name, HOOK_SIZE)
+                    hook_font = self._find_font(hook_font_name, HOOK_SIZE)
                     hook_lines = self._wrap_text(hook_text.upper(), hook_font, max_text_width)
                     hook_height = sum(hook_font.getbbox(line)[3] - hook_font.getbbox(line)[1] + 10 for line in hook_lines)
                     all_blocks.append((hook_lines, hook_font, hook_height, 10))
 
-                # Body block
+                # Body block (regular font, normal case)
                 if body_text:
-                    body_font = self._find_font(font_name, BODY_SIZE)
+                    body_font = self._find_font(body_font_name, BODY_SIZE)
                     body_lines = self._wrap_text(body_text, body_font, max_text_width)
                     body_height = sum(body_font.getbbox(line)[3] - body_font.getbbox(line)[1] + 12 for line in body_lines)
                     all_blocks.append((body_lines, body_font, body_height, 12))
 
-                # CTA block
+                # CTA block (regular font, uppercase)
                 if cta_text:
-                    cta_font = self._find_font(font_name, CTA_SIZE)
+                    cta_font = self._find_font(cta_font_name, CTA_SIZE)
                     cta_lines = self._wrap_text(cta_text.upper(), cta_font, max_text_width)
                     cta_height = sum(cta_font.getbbox(line)[3] - cta_font.getbbox(line)[1] + 10 for line in cta_lines)
                     all_blocks.append((cta_lines, cta_font, cta_height, 10))
@@ -283,9 +309,9 @@ class ImageCompositor:
             else:
                 # === AI BACKGROUND: Hook at top, body+CTA at bottom (safe zone in middle) ===
 
-                # Draw hook text at top
+                # Draw hook text at top (bold if enabled)
                 if hook_text:
-                    hook_font = self._find_font(font_name, HOOK_SIZE)
+                    hook_font = self._find_font(hook_font_name, HOOK_SIZE)
                     hook_lines = self._wrap_text(hook_text.upper(), hook_font, max_text_width)
 
                     y_offset = padding
@@ -300,7 +326,7 @@ class ImageCompositor:
                         )
                         y_offset += bbox[3] - bbox[1] + 15
 
-                # Body and CTA at bottom
+                # Body and CTA at bottom (regular font)
                 max_bottom_y = height - padding
                 min_body_y = bottom_zone_start + padding
 
@@ -312,7 +338,7 @@ class ImageCompositor:
                         total_height = 0
 
                         if body_text:
-                            body_font = self._find_font(font_name, current_body_size)
+                            body_font = self._find_font(body_font_name, current_body_size)
                             body_lines = self._wrap_text(body_text, body_font, max_text_width)
                             text_blocks.append((body_lines, body_font))
                             for line in body_lines:
@@ -321,7 +347,7 @@ class ImageCompositor:
 
                         if cta_text:
                             cta_size = int(CTA_SIZE * current_body_size / BODY_SIZE)
-                            cta_font = self._find_font(font_name, max(cta_size, MIN_FONT_SIZE))
+                            cta_font = self._find_font(cta_font_name, max(cta_size, MIN_FONT_SIZE))
                             cta_lines = self._wrap_text(cta_text.upper(), cta_font, max_text_width)
                             text_blocks.append((cta_lines, cta_font))
                             if body_text:
