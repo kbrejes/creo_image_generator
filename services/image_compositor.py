@@ -2,8 +2,7 @@
 
 import io
 from pathlib import Path
-from PIL import Image, ImageFont
-from pillow_emoji import ImageDraw
+from PIL import Image, ImageDraw, ImageFont
 import httpx
 
 from services.storage import get_storage_service
@@ -169,8 +168,8 @@ class ImageCompositor:
                 if dx != 0 or dy != 0:
                     draw.text((x + dx, y + dy), text, font=font, fill=outline)
 
-        # Draw main text (using the emoji-aware ImageDraw)
-        draw.text((x, y), text, font=font, fill=fill, embedded_color=True)
+        # Draw main text
+        draw.text((x, y), text, font=font, fill=fill)
 
     async def batch_compose(
         self,
