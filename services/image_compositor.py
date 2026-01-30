@@ -4,6 +4,7 @@ import io
 from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont
 import httpx
+import emoji
 
 from services.storage import get_storage_service
 
@@ -62,8 +63,16 @@ class ImageCompositor:
     def __init__(self):
         self.storage = get_storage_service()
 
-    def _find_font(self, font_name: str, size: int) -> ImageFont.FreeTypeFont:
-        """Find and load a font, with fallbacks."""
+    def _find_font(self, font_name: str, size: int, text: str = "") -> ImageFont.FreeTypeFont:
+        """Find and load a font, with fallbacks, checking for emoji."""
+        
+        # If text contains any emoji characters, force use of the emoji font
+        if any(char in emoji.UNICODE_EMOJI['en'] for char in text):
+            try:
+                return ImageFont.truetype("/usr/share/fonts/truetype/noto/NotoColorEmoji.ttf", size)
+            except IOError:
+                pass  # Fallback to standard fonts if Noto is not found
+
         paths = self.FONT_PATHS.get(font_name, self.FONT_PATHS["impact"])
 
         for path in paths:
@@ -72,22 +81,8 @@ class ImageCompositor:
                     return ImageFont.truetype(path, size)
                 except Exception:
                     continue
-
-        # Fallback to Liberation Sans Bold if available
-        try:
-            return ImageFont.truetype("/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf", size)
-        except Exception:
-            pass
-
-        # Last resort - DejaVu Sans Bold
-        try:
-            return ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", size)
-        except Exception:
-            # Final fallback - Noto Color Emoji for emoji support
-            try:
-                return ImageFont.truetype("/usr/share/fonts/truetype/noto/NotoColorEmoji.ttf", size)
-            except Exception:
-                return ImageFont.load_default()
+        
+        return ImageFont.load_default()
 
     def _wrap_text(self, text: str, font: ImageFont.FreeTypeFont, max_width: int) -> list[str]:
         """Wrap text to fit within max_width."""
@@ -130,7 +125,7 @@ class ImageCompositor:
         """
         # Try sizes from max down to min, stepping by 1 for best fit
         for size in range(max_font_size, min_font_size - 1, -1):
-            font = self._find_font(font_name, size)
+            font = self._find_font(font_name, size, text=text)
             lines = self._wrap_text(text, font, max_width)
 
             # Calculate total height needed
@@ -145,7 +140,7 @@ class ImageCompositor:
                 return font, lines
 
         # If nothing fits, use minimum size anyway
-        font = self._find_font(font_name, min_font_size)
+        font = self._find_font(font_name, min_font_size, text=text)
         lines = self._wrap_text(text, font, max_width)
         return font, lines
 
@@ -302,21 +297,21 @@ class ImageCompositor:
 
                 # Hook block (bold if enabled, uppercase)
                 if hook_text:
-                    hook_font = self._find_font(hook_font_name, HOOK_SIZE)
+                    hook_font = self._find_font(hook_font_name, HOOK_SIZE, text=hook_text)
                     hook_lines = self._wrap_text(hook_text.upper(), hook_font, max_text_width)
                     hook_height = sum(hook_font.getbbox(line)[3] - hook_font.getbbox(line)[1] + 10 for line in hook_lines)
                     all_blocks.append((hook_lines, hook_font, hook_height, 10))
 
                 # Body block (regular font, normal case)
                 if body_text:
-                    body_font = self._find_font(body_font_name, BODY_SIZE)
+                    body_font = self._find_font(body_font_name, BODY_SIZE, text=body_text)
                     body_lines = self._wrap_text(body_text, body_font, max_text_width)
                     body_height = sum(body_font.getbbox(line)[3] - body_font.getbbox(line)[1] + 12 for line in body_lines)
                     all_blocks.append((body_lines, body_font, body_height, 12))
 
                 # CTA block (regular font, uppercase)
                 if cta_text:
-                    cta_font = self._find_font(cta_font_name, CTA_SIZE)
+                    cta_font = self._find_font(cta_font_name, CTA_SIZE, text=cta_text)
                     cta_lines = self._wrap_text(cta_text.upper(), cta_font, max_text_width)
                     cta_height = sum(cta_font.getbbox(line)[3] - cta_font.getbbox(line)[1] + 10 for line in cta_lines)
                     all_blocks.append((cta_lines, cta_font, cta_height, 10))
@@ -352,7 +347,7 @@ class ImageCompositor:
 
                 # Draw hook text at top (bold if enabled)
                 if hook_text:
-                    hook_font = self._find_font(hook_font_name, HOOK_SIZE)
+                    hook_font = self._find_font(hook_font_name, HOOK_SIZE, text=hook_text)
                     hook_lines = self._wrap_text(hook_text.upper(), hook_font, max_text_width)
 
                     y_offset = padding
@@ -379,7 +374,7 @@ class ImageCompositor:
                         total_height = 0
 
                         if body_text:
-                            body_font = self._find_font(body_font_name, current_body_size)
+                            body_font = self._find_font(body_font_name, current_body_size, text=body_text)
                             body_lines = self._wrap_text(body_text, body_font, max_text_width)
                             text_blocks.append((body_lines, body_font))
                             for line in body_lines:
@@ -388,7 +383,7 @@ class ImageCompositor:
 
                         if cta_text:
                             cta_size = int(CTA_SIZE * current_body_size / BODY_SIZE)
-                            cta_font = self._find_font(cta_font_name, max(cta_size, MIN_FONT_SIZE))
+                            cta_font = self._find_font(cta_font_name, max(cta_size, MIN_FONT_SIZE), text=cta_text)
                             cta_lines = self._wrap_text(cta_text.upper(), cta_font, max_text_width)
                             text_blocks.append((cta_lines, cta_font))
                             if body_text:
