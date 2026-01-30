@@ -76,6 +76,7 @@ Configure backends via environment variables in `.env`:
     """,
     version="1.0.0",
     lifespan=lifespan,
+    openapi_version="3.0.2",  # Force OpenAPI 3.0.2 for Dify compatibility
 )
 
 # Add CORS middleware (needed for Dify to call the API)
