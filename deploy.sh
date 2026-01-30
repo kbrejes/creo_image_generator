@@ -10,7 +10,7 @@ fi
 export BASE_URL="http://dify.yourads.io:8000"
 
 # Build and run
-docker-compose up -d --build
+docker compose up -d --build
 
 echo "API running at http://dify.yourads.io:8000"
 echo "Health check: curl http://dify.yourads.io:8000/health"

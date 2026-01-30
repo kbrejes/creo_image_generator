@@ -1,0 +1,329 @@
+app:
+  description: Generates ad copy and images for meme-style ads
+  icon: "\U0001F3A8"
+  icon_background: "#FFEAD5"
+  mode: advanced-chat
+  name: Ad Creative Agent v2
+  use_icon_as_answer_icon: false
+
+kind: app
+version: 0.1.3
+
+workflow:
+  conversation_variables: []
+  environment_variables: []
+  features:
+    file_upload:
+      allowed_file_extensions:
+        - .jpg
+        - .jpeg
+        - .png
+        - .gif
+        - .webp
+        - .svg
+      allowed_file_types:
+        - image
+      allowed_file_upload_methods:
+        - local_file
+        - remote_url
+      enabled: false
+      fileUploadConfig:
+        audio_file_size_limit: 50
+        batch_count_limit: 5
+        file_size_limit: 15
+        image_file_size_limit: 10
+        video_file_size_limit: 100
+        workflow_file_upload_limit: 10
+      image:
+        enabled: false
+        number_limits: 3
+        transfer_methods:
+          - local_file
+          - remote_url
+      number_limits: 3
+    opening_statement: "Hey! Describe your product/service and I'll create scroll-stopping ad copy + image for you."
+    retriever_resource:
+      enabled: false
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    suggested_questions: []
+    suggested_questions_after_answer:
+      enabled: false
+    text_to_speech:
+      enabled: false
+      language: ""
+      voice: ""
+  graph:
+    edges:
+      - data:
+          isInIteration: false
+          sourceType: start
+          targetType: llm
+        id: edge-start-llm1
+        source: "1"
+        sourceHandle: source
+        target: "2"
+        targetHandle: target
+        type: custom
+      - data:
+          isInIteration: false
+          sourceType: llm
+          targetType: llm
+        id: edge-llm1-llm2
+        source: "2"
+        sourceHandle: source
+        target: "3"
+        targetHandle: target
+        type: custom
+      - data:
+          isInIteration: false
+          sourceType: llm
+          targetType: http-request
+        id: edge-llm2-http
+        source: "3"
+        sourceHandle: source
+        target: "4"
+        targetHandle: target
+        type: custom
+      - data:
+          isInIteration: false
+          sourceType: http-request
+          targetType: code
+        id: edge-http-code
+        source: "4"
+        sourceHandle: source
+        target: "5"
+        targetHandle: target
+        type: custom
+      - data:
+          isInIteration: false
+          sourceType: code
+          targetType: answer
+        id: edge-code-answer
+        source: "5"
+        sourceHandle: source
+        target: "6"
+        targetHandle: target
+        type: custom
+    nodes:
+      - data:
+          desc: ""
+          selected: false
+          title: Start
+          type: start
+          variables: []
+        height: 54
+        id: "1"
+        position:
+          x: 30
+          y: 300
+        positionAbsolute:
+          x: 30
+          y: 300
+        type: custom
+        width: 244
+      - data:
+          context:
+            enabled: false
+            variable_selector: []
+          desc: Generate meme-style ad copy
+          memory:
+            query_prompt_template: "{{#sys.query#}}"
+            role_prefix:
+              assistant: ""
+              user: ""
+            window:
+              enabled: false
+              size: 10
+          model:
+            completion_params:
+              temperature: 0.8
+            mode: chat
+            name: deepseek-chat
+            provider: langgenius/deepseek/deepseek
+          prompt_template:
+            - id: sys-prompt
+              role: system
+              text: |
+                You are an expert ad copywriter specializing in "ugly ads" / meme-style ads that stop the scroll.
+
+                Given a product/service description, generate 3 ad copy variations. Each should have:
+                - hook: Provocative, pattern-interrupt opening (1 punchy sentence)
+                - body: Brief value proposition (1-2 sentences)
+                - cta: Call to action (short, urgent)
+
+                Style: curiosity gaps, bold claims, relatable pain points. Human, not corporate. Create FOMO.
+
+                Output JSON:
+                {
+                  "variations": [
+                    {"hook": "...", "body": "...", "cta": "..."}
+                  ],
+                  "best_hook": "the single best hook from above"
+                }
+            - id: user-prompt
+              role: user
+              text: "Product/Service: {{#sys.query#}}"
+          selected: false
+          title: Generate Copy
+          type: llm
+          variables: []
+          vision:
+            configs:
+              detail: high
+            enabled: false
+        height: 98
+        id: "2"
+        position:
+          x: 334
+          y: 300
+        positionAbsolute:
+          x: 334
+          y: 300
+        type: custom
+        width: 244
+      - data:
+          context:
+            enabled: false
+            variable_selector: []
+          desc: Create Flux image prompt
+          memory:
+            query_prompt_template: "{{#sys.query#}}"
+            role_prefix:
+              assistant: ""
+              user: ""
+            window:
+              enabled: false
+              size: 10
+          model:
+            completion_params:
+              temperature: 0.7
+            mode: chat
+            name: deepseek-chat
+            provider: langgenius/deepseek/deepseek
+          prompt_template:
+            - id: sys-prompt-2
+              role: system
+              text: |
+                Create image prompts for Flux AI. Generate meme-style ad images.
+
+                Rules:
+                1. Feature a PERSON with expressive reaction (shocked, excited, pointing, celebrating, mind-blown)
+                2. Clean simple backgrounds
+                3. Bright eye-catching lighting
+                4. MUST end with: NO TEXT NO WORDS NO LETTERS
+                5. Under 80 words
+
+                Output ONLY the prompt.
+            - id: user-prompt-2
+              role: user
+              text: "Create an image prompt matching this ad's emotional tone:\n{{#2.text#}}"
+          selected: false
+          title: Build Prompt
+          type: llm
+          variables: []
+          vision:
+            configs:
+              detail: high
+            enabled: false
+        height: 98
+        id: "3"
+        position:
+          x: 638
+          y: 300
+        positionAbsolute:
+          x: 638
+          y: 300
+        type: custom
+        width: 244
+      - data:
+          authorization:
+            config: null
+            type: no-auth
+          body:
+            data: '{"prompt": "{{#3.text#}}", "backend": "flux", "size": "1024x1024"}'
+            type: json
+          desc: Call image generation API
+          headers: "Content-Type:application/json"
+          method: post
+          params: ""
+          timeout:
+            connect: 60
+            max_connect_timeout: 60
+            max_read_timeout: 180
+            max_write_timeout: 180
+            read: 180
+            write: 180
+          title: Generate Image
+          type: http-request
+          url: https://creo.yourads.io/tools/generate-image
+          variables: []
+        height: 98
+        id: "4"
+        position:
+          x: 942
+          y: 300
+        positionAbsolute:
+          x: 942
+          y: 300
+        type: custom
+        width: 244
+      - data:
+          code: |
+            import json
+
+            def main(body: str) -> dict:
+                try:
+                    data = json.loads(body)
+                    if data.get("success") and data.get("images"):
+                        return {"image_url": data["images"][0]["url"]}
+                    return {"image_url": "Error: " + data.get("error", "Unknown error")}
+                except:
+                    return {"image_url": "Error parsing response"}
+          code_language: python3
+          desc: Extract image URL from JSON
+          outputs:
+            image_url:
+              children: null
+              type: string
+          selected: false
+          title: Parse Response
+          type: code
+          variables:
+            - value_selector:
+                - "4"
+                - body
+              variable: body
+        height: 98
+        id: "5"
+        position:
+          x: 1246
+          y: 300
+        positionAbsolute:
+          x: 1246
+          y: 300
+        type: custom
+        width: 244
+      - data:
+          answer: "## Ad Copy Options\n{{#2.text#}}\n\n---\n\n## Generated Image\n{{#5.image_url#}}"
+          desc: ""
+          selected: false
+          title: Answer
+          type: answer
+          variables: []
+        height: 107
+        id: "6"
+        position:
+          x: 1550
+          y: 300
+        positionAbsolute:
+          x: 1550
+          y: 300
+        type: custom
+        width: 244
+    viewport:
+      x: 0
+      y: 0
+      zoom: 0.8

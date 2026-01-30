@@ -165,6 +165,52 @@ class ImageCompositor:
         # Draw main text
         draw.text((x, y), text, font=font, fill=fill)
 
+    async def batch_compose(
+        self,
+        image_source: str,
+        variations: list[dict],
+        output_size: str = "instagram_square",
+        font_name: str = "impact",
+        text_color: str = "white",
+        outline_color: str = "black",
+        **kwargs
+    ) -> list[str]:
+        """Compose multiple text variations on the same base image."""
+        results = []
+        try:
+            # 1. Load the source image ONCE
+            if not image_source or image_source.lower() in ("white", "blank", "none", ""):
+                target_size = self.SIZES.get(output_size, self.SIZES["instagram_square"])
+                base_img = Image.new("RGB", target_size, color="white")
+            elif image_source.startswith("http"):
+                async with httpx.AsyncClient() as client:
+                    response = await client.get(image_source)
+                    response.raise_for_status()
+                    base_img = Image.open(io.BytesIO(response.content))
+            else:
+                base_img = Image.open(image_source)
+
+            # 2. Iterate through variations
+            for var in variations:
+                res = await self.compose(
+                    image_source=image_source,
+                    hook_text=var.get("hook_text", ""),
+                    body_text=var.get("body_text", ""),
+                    cta_text=var.get("cta_text", ""),
+                    output_size=output_size,
+                    font_name=font_name,
+                    text_color=text_color,
+                    outline_color=outline_color,
+                    _preloaded_image=base_img.copy(),
+                    **kwargs
+                )
+                if res.get("success"):
+                    results.append(res["url"])
+            return results
+        except Exception as e:
+            print(f"Batch composition error: {e}")
+            return []
+
     async def compose(
         self,
         image_source: str,  # URL or file path
@@ -182,44 +228,33 @@ class ImageCompositor:
         padding: int = 40,
         cta_emoji: bool = False,
         bold_hook: bool = True,
+        _preloaded_image: Image.Image | None = None,
     ) -> dict:
         """
         Compose an ad image with text overlays.
-
-        Args:
-            image_source: URL or local path to the base image
-            hook_text: Main text at top of image
-            body_text: Secondary text at bottom (optional)
-            cta_text: Call to action text (optional)
-            output_size: Target size preset
-            font_name: Font to use (impact, arial_bold)
-            hook_font_size: Font size for hook text
-            body_font_size: Font size for body text
-            cta_font_size: Font size for CTA
-            text_color: Text fill color
-            outline_color: Text outline color
-            outline_width: Outline thickness
-            padding: Padding from edges
-
-        Returns:
-            Dict with success status and output URL
         """
         try:
             # Get target size
             target_size = self.SIZES.get(output_size, self.SIZES["instagram_square"])
 
-            # Load the source image or create white background
-            if not image_source or image_source.lower() in ("white", "blank", "none", ""):
-                # Create white background
-                img = Image.new("RGB", target_size, color="white")
-            elif image_source.startswith("http"):
-                async with httpx.AsyncClient() as client:
-                    response = await client.get(image_source)
-                    response.raise_for_status()
-                    img = Image.open(io.BytesIO(response.content))
+            img = _preloaded_image
+
+            if img is None:
+                # Load the source image or create white background
+                if not image_source or image_source.lower() in ("white", "blank", "none", ""):
+                    # Create white background
+                    img = Image.new("RGB", target_size, color="white")
+                elif image_source.startswith("http"):
+                    async with httpx.AsyncClient() as client:
+                        response = await client.get(image_source)
+                        response.raise_for_status()
+                        img = Image.open(io.BytesIO(response.content))
+                else:
+                    img = Image.open(image_source)
 
             # Resize image to fit target, maintaining aspect ratio and cropping
-            img = self._resize_and_crop(img, target_size)
+            if img.size != target_size:
+                img = self._resize_and_crop(img, target_size)
 
             # Create drawing context
             draw = ImageDraw.Draw(img)

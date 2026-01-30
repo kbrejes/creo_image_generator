@@ -1,9 +1,9 @@
 app:
-  description: Generates ad creatives from content - Paste website copy, emails, or product descriptions
-  icon: "\U0001F4DD"
-  icon_background: "#E3F2FD"
+  description: Auto-extracts from URLs or text - Just paste a URL or content and get ads
+  icon: "\U0001F310"
+  icon_background: "#E8F5E9"
   mode: advanced-chat
-  name: Ad Creative Agent v5 (Content Extraction)
+  name: Ad Creative Agent v6 (Auto URL Fetch)
   use_icon_as_answer_icon: false
 
 kind: app
@@ -17,7 +17,7 @@ workflow:
       enabled: false
       image:
         enabled: false
-    opening_statement: "Paste text OR enter a URL in 'Content Source' - I'll guide you through automatic content extraction and generate ads! For URLs, I'll provide a Jina Reader link to fetch clean content. Or use manual fields if you prefer."
+    opening_statement: "Just paste a URL (like https://yoursite.com) or any text content - I'll automatically fetch and extract info to generate ads! URLs are fetched automatically via Jina Reader."
     retriever_resource:
       enabled: false
     sensitive_word_avoidance:
@@ -118,8 +118,8 @@ workflow:
           title: Start
           type: start
           variables:
-            - label: "Content Source (paste text OR enter URL - automatic content extraction)"
-              max_length: 100000
+            - label: "Content Source (paste URL like https://example.com OR text content)"
+              max_length: 5000
               required: false
               type: paragraph
               variable: content_source
@@ -151,46 +151,13 @@ workflow:
               required: false
               type: number
               variable: font_scale
-            - label: "Background"
-              required: false
-              type: select
-              variable: background
-              options:
-                - "AI Generated"
-                - "White"
-            - label: "Text Color"
-              required: false
-              type: select
-              variable: text_color
-              options:
-                - "White (for dark backgrounds)"
-                - "Black (for light backgrounds)"
-            - label: "Image Generator (if AI background)"
+            - label: "Image Generator"
               required: false
               type: select
               variable: backend
               options:
                 - "flux"
                 - "sdxl"
-            - label: "Add pointing emoji to CTA 👇"
-              required: false
-              type: select
-              variable: cta_emoji
-              options:
-                - "No"
-                - "Yes"
-            - label: "Bold hook text"
-              required: false
-              type: select
-              variable: bold_hook
-              options:
-                - "Yes"
-                - "No"
-            - label: "Number of creatives to generate"
-              required: false
-              type: number
-              variable: num_creatives
-              default: 1
         height: 54
         id: "1"
         position:
@@ -221,36 +188,21 @@ workflow:
               text: |
                 You are an expert ad copywriter for "ugly ads" / meme-style ads.
 
-                TASK 0: URL Handling
-                If the content source starts with "http://" or "https://":
-                1. Inform the user: "I detected a URL. To extract content automatically, please:"
-                2. Provide the Jina Reader link: "Visit: https://r.jina.ai/[the URL]"
-                3. Instruct: "Copy the extracted content and paste it here instead of the URL"
-                4. STOP - Do not proceed with ad generation until actual content is provided
-
-                TASK 1: If source content (text, not URL) is provided, first extract:
+                TASK 1: If source content is provided, first extract:
                 - Product/service name and what it does
                 - Target audience/customer type
                 - Key benefits and value proposition
                 - Pain points it solves
 
-                TASK 2: Generate {{num_creatives}} UNIQUE ad copy variations (default 1 if not specified).
-                Each variation MUST be distinctly different - different hooks, different angles, different CTAs.
-
-                For each variation:
+                TASK 2: Generate 3 ad copy variations with:
                 - hook: Provocative opening (SHORT, 5-10 words max, must fit on image)
                 - body: Value proposition (2-3 sentences with clear benefits and reasons to take action)
                 - cta: Call to action (2-4 words)
 
-                IMPORTANT: Each variation must have a DIFFERENT approach:
-                - Different emotional angles (fear, excitement, curiosity, urgency, etc.)
-                - Different hooks (question, statement, statistic, bold claim, etc.)
-                - Different CTAs (action-oriented, benefit-focused, urgency-based, etc.)
-
                 Use extracted info from content, or fall back to manual inputs if no content provided.
 
                 Output JSON only:
-                {"variations": [{"hook": "...", "body": "...", "cta": "..."}, ...]}
+                {"variations": [{"hook": "...", "body": "...", "cta": "..."}], "best": {"hook": "...", "body": "...", "cta": "..."}}
             - id: usr
               role: user
               text: |
@@ -261,9 +213,6 @@ workflow:
                 Product: {{#1.product#}}
                 Target Audience: {{#1.audience#}}
                 Desired Style: {{#1.style#}}
-
-                === NUMBER OF CREATIVES ===
-                Generate exactly {{#1.num_creatives#}} unique variations (if empty or 0, generate 1)
 
                 === ADDITIONAL INSTRUCTIONS ===
                 {{#sys.query#}}
@@ -291,10 +240,6 @@ workflow:
                 - sys
                 - query
               variable: query
-            - value_selector:
-                - "1"
-                - num_creatives
-              variable: num_creatives
           vision:
             enabled: false
         height: 98
@@ -310,54 +255,40 @@ workflow:
             import json
             import re
 
-            def main(copy_json: str, custom_hook: str = "", num_creatives: int = 1) -> dict:
+            def main(copy_json: str, custom_hook: str = "") -> dict:
                 try:
                     # Strip markdown code blocks if present
                     clean_json = copy_json.strip()
                     if clean_json.startswith("```"):
+                        # Remove ```json or ``` at start and ``` at end
                         clean_json = re.sub(r'^```(?:json)?\s*\n', '', clean_json)
                         clean_json = re.sub(r'\n```\s*$', '', clean_json)
 
                     data = json.loads(clean_json)
-                    variations = data.get("variations", [])
+                    best = data.get("best", data.get("variations", [{}])[0])
 
-                    # Ensure we have at least one variation
-                    if not variations:
-                        variations = [data.get("best", {"hook": "Check this out!", "body": "", "cta": "Learn more"})]
-
-                    # Apply custom hook to all variations if provided
-                    if custom_hook and custom_hook.strip():
-                        for v in variations:
-                            v["hook"] = custom_hook.strip()
-
-                    # First variation for backward compatibility
-                    first = variations[0] if variations else {}
-
-                    # Limit to requested number
-                    num = max(1, int(num_creatives) if num_creatives else 1)
-                    variations = variations[:num]
+                    # Use custom hook if provided, otherwise use AI-generated
+                    final_hook = custom_hook.strip() if custom_hook and custom_hook.strip() else best.get("hook", "")
 
                     return {
-                        "hook": first.get("hook", ""),
-                        "body": first.get("body", ""),
-                        "cta": first.get("cta", ""),
-                        "variations_json": json.dumps(variations),
-                        "num_variations": len(variations),
-                        "all_copy": copy_json
+                        "hook": final_hook,
+                        "body": best.get("body", ""),
+                        "cta": best.get("cta", ""),
+                        "all_copy": copy_json,
+                        "using_custom_hook": bool(custom_hook and custom_hook.strip())
                     }
                 except Exception as e:
-                    fallback = [{"hook": custom_hook.strip() if custom_hook else "Check this out!", "body": "", "cta": "Learn more"}]
+                    fallback_hook = custom_hook.strip() if custom_hook and custom_hook.strip() else "Check this out!"
                     return {
-                        "hook": fallback[0]["hook"],
+                        "hook": fallback_hook,
                         "body": "",
                         "cta": "Learn more",
-                        "variations_json": json.dumps(fallback),
-                        "num_variations": 1,
                         "all_copy": copy_json,
+                        "using_custom_hook": bool(custom_hook and custom_hook.strip()),
                         "error": str(e)
                     }
           code_language: python3
-          desc: Extract all variations and format for batch processing
+          desc: Extract best copy and apply custom hook if provided
           outputs:
             hook:
               type: string
@@ -365,12 +296,10 @@ workflow:
               type: string
             cta:
               type: string
-            variations_json:
-              type: string
-            num_variations:
-              type: number
             all_copy:
               type: string
+            using_custom_hook:
+              type: boolean
           selected: false
           title: Parse Copy
           type: code
@@ -383,10 +312,6 @@ workflow:
                 - "1"
                 - custom_hook
               variable: custom_hook
-            - value_selector:
-                - "1"
-                - num_creatives
-              variable: num_creatives
         height: 98
         id: "3"
         position:
@@ -481,11 +406,7 @@ workflow:
           code: |
             import json
 
-            def main(body: str, background: str = "") -> dict:
-                # If white background selected, skip generated image
-                if background and background.lower() == "white":
-                    return {"image_url": "white"}
-
+            def main(body: str) -> dict:
                 try:
                     data = json.loads(body)
                     if data.get("success") and data.get("images"):
@@ -497,7 +418,7 @@ workflow:
                 except:
                     return {"image_url": ""}
           code_language: python3
-          desc: Extract image URL or use white background
+          desc: Extract image URL
           outputs:
             image_url:
               type: string
@@ -509,10 +430,6 @@ workflow:
                 - "5"
                 - body
               variable: body
-            - value_selector:
-                - "1"
-                - background
-              variable: background
         height: 98
         id: "6"
         position:
@@ -531,7 +448,7 @@ workflow:
           desc: Add text overlay to image
           headers: ""
           method: post
-          params: "image_url:{{#6.image_url#}}\nhook_text:{{#3.hook#}}\nbody_text:{{#3.body#}}\ncta_text:{{#3.cta#}}\noutput_size:instagram_square\nhook_font_size:120\nbody_font_size:42\ncta_font_size:48\ntext_color:{{#1.text_color#}}\ncta_emoji:{{#1.cta_emoji#}}\nbold_hook:{{#1.bold_hook#}}"
+          params: "image_url:{{#6.image_url#}}\nhook_text:{{#3.hook#}}\nbody_text:{{#3.body#}}\ncta_text:{{#3.cta#}}\noutput_size:instagram_square\nhook_font_size:120\nbody_font_size:42\ncta_font_size:48"
           timeout:
             connect: 60
             max_connect_timeout: 60

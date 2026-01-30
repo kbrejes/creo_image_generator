@@ -215,3 +215,43 @@ class HealthResponse(BaseModel):
     available_video_backends: list[str] = Field(
         default_factory=list, description="Configured video backends"
     )
+
+
+# ===================
+# Batch Composition
+# ===================
+
+
+class TextVariation(BaseModel):
+    """A single text variation for batch composition."""
+
+    hook_text: str = Field(..., description="Main text at top of image")
+    body_text: str | None = Field(default="", description="Secondary text at bottom")
+    cta_text: str | None = Field(default="", description="Call to action text")
+
+
+class BatchComposeRequest(BaseModel):
+    """Request model for batch ad composition."""
+
+    image_url: str = Field(
+        ..., description="URL of the base image to use for all variations"
+    )
+    variations: list[TextVariation] = Field(
+        ..., description="List of text variations to apply", min_length=1
+    )
+    output_size: str = Field(
+        default="instagram_square", description="Target size preset"
+    )
+    font_name: str = Field(default="impact", description="Font to use")
+    text_color: str = Field(default="white", description="Text fill color")
+    outline_color: str = Field(default="black", description="Text outline color")
+
+
+class BatchComposeResponse(BaseModel):
+    """Response model for batch composition."""
+
+    success: bool = Field(..., description="Whether batch processing was successful")
+    images: list[str] = Field(
+        default_factory=list, description="List of URLs for generated images"
+    )
+    error: str | None = Field(default=None, description="Error message if failed")

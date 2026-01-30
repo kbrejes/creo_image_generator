@@ -1,0 +1,285 @@
+app:
+  name: Ad Creative Agent
+  description: Generates ad copy and images for meme-style ads
+  mode: advanced-chat
+  icon: "\U0001F3A8"
+  icon_background: "#FFEAD5"
+
+kind: app
+version: 0.1.3
+
+workflow:
+  conversation_variables: []
+  environment_variables: []
+  features:
+    file_upload:
+      enabled: false
+      image:
+        enabled: false
+    opening_statement: "I'll help you create scroll-stopping ad creatives. Just describe your product or service!"
+    retriever_resource:
+      enabled: false
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    suggested_questions: []
+    suggested_questions_after_answer:
+      enabled: false
+    text_to_speech:
+      enabled: false
+  graph:
+    edges:
+      - data:
+          isInIteration: false
+          sourceType: start
+          targetType: llm
+        id: start-to-copy
+        source: start
+        sourceHandle: source
+        target: generate-copy
+        targetHandle: target
+        type: custom
+      - data:
+          isInIteration: false
+          sourceType: llm
+          targetType: llm
+        id: copy-to-prompt
+        source: generate-copy
+        sourceHandle: source
+        target: build-prompt
+        targetHandle: target
+        type: custom
+      - data:
+          isInIteration: false
+          sourceType: llm
+          targetType: http-request
+        id: prompt-to-http
+        source: build-prompt
+        sourceHandle: source
+        target: generate-image
+        targetHandle: target
+        type: custom
+      - data:
+          isInIteration: false
+          sourceType: http-request
+          targetType: answer
+        id: http-to-answer
+        source: generate-image
+        sourceHandle: source
+        target: answer
+        targetHandle: target
+        type: custom
+    nodes:
+      - data:
+          desc: User input
+          selected: false
+          title: Start
+          type: start
+          variables: []
+        height: 90
+        id: start
+        position:
+          x: 80
+          y: 282
+        positionAbsolute:
+          x: 80
+          y: 282
+        type: custom
+        width: 244
+      - data:
+          context:
+            enabled: false
+            variable_selector: []
+          desc: Generate meme-style ad copy
+          memory:
+            query_prompt_template: "{{#sys.query#}}"
+            role_prefix:
+              assistant: ""
+              user: ""
+            window:
+              enabled: false
+              size: 10
+          model:
+            completion_params:
+              temperature: 0.8
+            mode: chat
+            name: deepseek-chat
+            provider: langgenius/deepseek/deepseek
+          prompt_template:
+            - id: system
+              role: system
+              text: |
+                You are an expert ad copywriter specializing in "ugly ads" / meme-style ads that stop the scroll.
+
+                Given a product/service description, generate 3 ad copy variations. Each should include:
+                - hook: A provocative, pattern-interrupt opening (1 punchy sentence)
+                - body: Brief value proposition (1-2 sentences max)
+                - cta: Call to action (short, urgent)
+
+                Style guidelines:
+                - Use curiosity gaps, bold claims, or relatable pain points
+                - Sound human, not corporate
+                - Create FOMO or urgency
+
+                Output as JSON:
+                {
+                  "variations": [
+                    {"hook": "...", "body": "...", "cta": "..."},
+                    {"hook": "...", "body": "...", "cta": "..."},
+                    {"hook": "...", "body": "...", "cta": "..."}
+                  ],
+                  "best_hook": "..."
+                }
+            - id: user
+              role: user
+              text: "Product/Service: {{#sys.query#}}"
+          selected: false
+          title: Generate Copy
+          type: llm
+          variables: []
+          vision:
+            configs:
+              detail: high
+            enabled: false
+        height: 98
+        id: generate-copy
+        position:
+          x: 384
+          y: 282
+        positionAbsolute:
+          x: 384
+          y: 282
+        type: custom
+        width: 244
+      - data:
+          context:
+            enabled: false
+            variable_selector: []
+          desc: Build Flux image prompt
+          memory:
+            query_prompt_template: "{{#sys.query#}}"
+            role_prefix:
+              assistant: ""
+              user: ""
+            window:
+              enabled: false
+              size: 10
+          model:
+            completion_params:
+              temperature: 0.7
+            mode: chat
+            name: deepseek-chat
+            provider: langgenius/deepseek/deepseek
+          prompt_template:
+            - id: system
+              role: system
+              text: |
+                You create image prompts for Flux AI to generate meme-style ad images.
+
+                Rules:
+                1. Feature a PERSON with an expressive reaction matching the ad's emotion
+                2. Reactions to use: shocked, excited, pointing at camera, celebrating, mind-blown, skeptical-then-convinced
+                3. Clean, simple backgrounds (solid color, office, home)
+                4. Bright, eye-catching lighting
+                5. MUST end with: "NO TEXT NO WORDS NO LETTERS"
+                6. Keep under 80 words
+
+                Output ONLY the prompt, nothing else.
+            - id: user
+              role: user
+              text: |
+                Create an image prompt for this ad:
+                {{#generate-copy.text#}}
+
+                Match the emotional tone of the best hook.
+          selected: false
+          title: Build Image Prompt
+          type: llm
+          variables: []
+          vision:
+            configs:
+              detail: high
+            enabled: false
+        height: 98
+        id: build-prompt
+        position:
+          x: 688
+          y: 282
+        positionAbsolute:
+          x: 688
+          y: 282
+        type: custom
+        width: 244
+      - data:
+          authorization:
+            config: null
+            type: no-auth
+          body:
+            data: |
+              {
+                "prompt": "{{#build-prompt.text#}}",
+                "backend": "flux",
+                "size": "1024x1024"
+              }
+            type: json
+          desc: Call creo API to generate image
+          headers: "Content-Type: application/json"
+          method: post
+          params: ""
+          selected: false
+          timeout:
+            connect: 60
+            read: 120
+            write: 120
+            max_connect_timeout: 0
+            max_read_timeout: 120
+            max_write_timeout: 120
+          title: Generate Image
+          type: http-request
+          url: https://creo.yourads.io/tools/generate-image
+          variables: []
+          retry_config:
+            max_retries: 1
+            retry_enabled: false
+            retry_interval: 100
+        height: 98
+        id: generate-image
+        position:
+          x: 992
+          y: 282
+        positionAbsolute:
+          x: 992
+          y: 282
+        type: custom
+        width: 244
+      - data:
+          answer: |
+            ## Your Ad Creative is Ready!
+
+            ### Ad Copy Options:
+            {{#generate-copy.text#}}
+
+            ### Generated Image:
+            ![Ad Image]({{#generate-image.body.images[0].url#}})
+
+            **Image URL:** {{#generate-image.body.images[0].url#}}
+          desc: ""
+          selected: false
+          title: Answer
+          type: answer
+          variables: []
+        height: 107
+        id: answer
+        position:
+          x: 1296
+          y: 282
+        positionAbsolute:
+          x: 1296
+          y: 282
+        type: custom
+        width: 244
+    viewport:
+      x: 0
+      y: 0
+      zoom: 1

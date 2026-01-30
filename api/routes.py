@@ -273,6 +273,89 @@ async def api_compose_ad(
     )
 
 
+@router.post(
+    "/tools/compose-batch",
+    tags=["Compositing"],
+    summary="Compose multiple ads from variations",
+    description="Generate multiple ad creatives from a JSON array of copy variations.",
+)
+async def api_compose_batch(
+    image_url: str,
+    variations_json: str,  # JSON array: [{"hook": "...", "body": "...", "cta": "..."}, ...]
+    output_size: str = "instagram_square",
+    text_color: str = "",
+    cta_emoji: str = "",
+    bold_hook: str = "",
+):
+    """Compose multiple ads from variations array."""
+    import json
+
+    # Parse variations
+    try:
+        variations = json.loads(variations_json)
+        if not isinstance(variations, list):
+            return {"success": False, "error": "variations_json must be a JSON array"}
+    except json.JSONDecodeError as e:
+        return {"success": False, "error": f"Invalid JSON: {str(e)}"}
+
+    # Determine colors
+    if text_color and "black" in text_color.lower():
+        actual_text_color = "black"
+        outline_color = "white"
+    else:
+        actual_text_color = "white"
+        outline_color = "black"
+
+    use_cta_emoji = cta_emoji and "yes" in cta_emoji.lower()
+    use_bold_hook = not bold_hook or "yes" in bold_hook.lower()
+
+    # Map variations key names if needed (hook -> hook_text)
+    mapped_variations = []
+    for v in variations:
+        mapped_variations.append({
+            "hook_text": v.get("hook", v.get("hook_text", "")),
+            "body_text": v.get("body", v.get("body_text", "")),
+            "cta_text": v.get("cta", v.get("cta_text", "")),
+        })
+
+    compositor = ImageCompositor()
+    
+    # Use the optimized batch_compose method
+    result_urls = await compositor.batch_compose(
+        image_source=image_url,
+        variations=mapped_variations,
+        output_size=output_size,
+        text_color=actual_text_color,
+        outline_color=outline_color,
+        cta_emoji=use_cta_emoji,
+        bold_hook=use_bold_hook,
+    )
+
+    if not result_urls:
+        return {
+            "success": False,
+            "error": "Batch composition failed or produced no results",
+        }
+
+    # Format response to include metadata for each
+    results = []
+    for i, url in enumerate(result_urls):
+        orig_var = variations[i] if i < len(variations) else {}
+        results.append({
+            "index": i + 1,
+            "url": url,
+            "hook": orig_var.get("hook", ""),
+            "body": orig_var.get("body", ""),
+            "cta": orig_var.get("cta", ""),
+        })
+
+    return {
+        "success": True,
+        "count": len(results),
+        "creatives": results,
+    }
+
+
 # ===================
 # Dify-Specific Endpoints
 # ===================

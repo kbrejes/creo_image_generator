@@ -95,7 +95,7 @@ nodes:
     type: llm
     description: "Understand what the user wants to create"
     config:
-      model: "claude-3-5-sonnet" # Or your preferred model
+      model: "claude-3-5-sonnet"
       system_prompt: "{{system_prompts.creative_director}}"
       user_prompt: |
         Analyze this creative request and extract key information:
@@ -111,65 +111,24 @@ nodes:
           "reference_needed": true/false,
           "has_reference_url": true/false,
           "reference_url": "URL if provided",
+          "num_variations": "number of creatives requested (default 1)",
           "creative_direction": "your recommended approach",
           "suggested_prompt": "initial image generation prompt"
         }
     outputs:
       - brief_analysis
 
-  # Node 3: Conditional - Check if reference analysis needed
-  - id: check_reference
-    type: conditional
-    description: "Route based on whether reference analysis is needed"
-    condition: "{{brief_analysis.has_reference_url}}"
-    true_branch: analyze_reference_node
-    false_branch: check_search_needed
+  # ... (Reference Analysis Nodes 3-6 remain same) ...
 
-  # Node 4: Reference Analysis (HTTP Tool)
-  - id: analyze_reference_node
-    type: http_tool
-    description: "Analyze the provided reference image"
-    config:
-      method: POST
-      url: "{{API_BASE_URL}}/tools/analyze-reference"
-      body:
-        image_url: "{{brief_analysis.reference_url}}"
-        analysis_type: "full"
-        context: "{{brief_analysis.product_or_subject}}"
-    outputs:
-      - reference_analysis
-
-  # Node 5: Check if web search needed
-  - id: check_search_needed
-    type: conditional
-    description: "Check if we need to search for references"
-    condition: "{{brief_analysis.reference_needed}} AND NOT {{brief_analysis.has_reference_url}}"
-    true_branch: search_references_node
-    false_branch: craft_prompt
-
-  # Node 6: Search References (HTTP Tool)
-  - id: search_references_node
-    type: http_tool
-    description: "Search for reference images"
-    config:
-      method: POST
-      url: "{{API_BASE_URL}}/tools/search-references"
-      body:
-        query: "{{brief_analysis.product_or_subject}} {{brief_analysis.style_preferences}} advertisement"
-        num_results: 3
-        platform: "{{brief_analysis.platform}}"
-    outputs:
-      - search_results
-
-  # Node 7: Craft Generation Prompt (LLM)
+  # Node 7: Craft Generation Prompt & Copy (LLM)
   - id: craft_prompt
     type: llm
-    description: "Create the optimal image generation prompt"
+    description: "Create the optimal image generation prompt and copy variations"
     config:
       model: "claude-3-5-sonnet"
       system_prompt: "{{system_prompts.prompt_engineer}}"
       user_prompt: |
-        Create an image generation prompt based on:
+        Create an image generation prompt and {{brief_analysis.num_variations}} ad copy variations based on:
 
         Brief Analysis: {{brief_analysis}}
         Reference Analysis: {{reference_analysis | default: "No reference provided"}}
@@ -181,16 +140,20 @@ nodes:
           "negative_prompt": "what to avoid",
           "recommended_backend": "dalle3|flux|ideogram|stability",
           "size": "1024x1024|1792x1024|1024x1792",
-          "style": "style preset if applicable",
+          "copy_variations": [
+            {"hook": "Main Headline", "body": "Body text", "cta": "Call to action"},
+            ... (generate {{brief_analysis.num_variations}} variations)
+          ],
+          "text_color_preference": "white|black",
           "rationale": "why these choices"
         }
     outputs:
       - generation_config
 
-  # Node 8: Generate Image (HTTP Tool)
+  # Node 8: Generate Base Image (HTTP Tool)
   - id: generate_image_node
     type: http_tool
-    description: "Generate the image"
+    description: "Generate the base image"
     config:
       method: POST
       url: "{{API_BASE_URL}}/tools/generate-image"
@@ -198,90 +161,46 @@ nodes:
         prompt: "{{generation_config.prompt}}"
         backend: "{{generation_config.recommended_backend}}"
         size: "{{generation_config.size}}"
-        style: "{{generation_config.style}}"
         negative_prompt: "{{generation_config.negative_prompt}}"
         num_images: 1
     outputs:
       - generated_image
 
-  # Node 9: Critique & Decide (LLM)
-  - id: critique
-    type: llm
-    description: "Evaluate the generated image and decide next steps"
-    config:
-      model: "claude-3-5-sonnet" # Use vision-capable model
-      system_prompt: "{{system_prompts.creative_director}}"
-      user_prompt: |
-        Evaluate this generated ad creative:
-
-        Original Brief: {{user_input}}
-        Generated Image: {{generated_image.images[0].url}}
-        Prompt Used: {{generation_config.prompt}}
-
-        Analyze:
-        1. Does it match the brief?
-        2. Is the composition effective?
-        3. Are the colors appropriate?
-        4. Would this work on the target platform?
-
-        Output JSON:
-        {
-          "quality_score": 1-10,
-          "strengths": ["list of strengths"],
-          "improvements": ["suggested improvements"],
-          "should_regenerate": true/false,
-          "refined_prompt": "improved prompt if regeneration needed",
-          "user_explanation": "explanation for the user about the creative"
-        }
-    outputs:
-      - critique_result
-
-  # Node 10: Check if regeneration needed
-  - id: check_regenerate
-    type: conditional
-    description: "Decide whether to regenerate"
-    condition: "{{critique_result.should_regenerate}} AND {{iteration_count | default: 0}} < 2"
-    true_branch: regenerate
-    false_branch: prepare_response
-
-  # Node 11: Regenerate with refined prompt
-  - id: regenerate
+  # Node 9: Batch Compose (HTTP Tool)
+  - id: batch_compose_node
     type: http_tool
-    description: "Regenerate with improved prompt"
+    description: "Add text overlays for all variations"
     config:
       method: POST
-      url: "{{API_BASE_URL}}/tools/generate-image"
+      url: "{{API_BASE_URL}}/tools/compose-batch"
       body:
-        prompt: "{{critique_result.refined_prompt}}"
-        backend: "{{generation_config.recommended_backend}}"
-        size: "{{generation_config.size}}"
-        num_images: 1
+        image_url: "{{generated_image.images[0].url}}"
+        variations_json: "{{generation_config.copy_variations | json}}"
+        output_size: "instagram_square"
+        text_color: "{{generation_config.text_color_preference}}"
     outputs:
-      - generated_image
-    next: critique
+      - final_creatives
 
-  # Node 12: Prepare Final Response (LLM)
+  # Node 10: Prepare Final Response (LLM)
   - id: prepare_response
     type: llm
     description: "Create the final response for the user"
     config:
       model: "claude-3-5-sonnet"
       user_prompt: |
-        Create a friendly response for the user including:
+        Create a friendly response for the user presenting their {{brief_analysis.num_variations}} new ad creatives.
 
-        1. The generated image: {{generated_image.images[0].url}}
-        2. Explanation of creative decisions: {{critique_result.user_explanation}}
-        3. Offer to:
-           - Generate variations
-           - Adjust the style
-           - Create ad copy to go with it
-           - Try a different approach
+        Base Image: {{generated_image.images[0].url}}
+        
+        Final Creatives:
+        {{final_creatives.creatives}}
 
-        Be conversational and helpful.
+        For each creative, explain why that specific hook/copy angle works.
+        Offer to generate more or refine specific ones.
     outputs:
       - final_response
 
-  # Node 13: End
+  # Node 11: End
   - id: end
     type: end
     description: "Return response to user"
