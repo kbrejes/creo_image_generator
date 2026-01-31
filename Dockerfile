@@ -2,11 +2,14 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install fonts, including an emoji font
+# Install fonts and graphics libraries (libEGL for skia/pictex)
 RUN apt-get update && apt-get install -y \
     fonts-liberation \
     fonts-dejavu-core \
     fonts-noto-color-emoji \
+    libegl1 \
+    libgl1 \
+    libgles2 \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
