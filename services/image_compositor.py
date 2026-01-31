@@ -466,49 +466,63 @@ class ImageCompositor:
                     hook_font = self._find_font(hook_font_name, HOOK_SIZE, text=hook_text)
                     hook_lines = self._wrap_text(hook_text.upper(), hook_font, max_text_width)
                     hook_height = sum(hook_font.getbbox(line)[3] - hook_font.getbbox(line)[1] + 10 for line in hook_lines)
-                    all_blocks.append((hook_lines, hook_font, hook_height, 10))
+                    all_blocks.append(("hook", hook_lines, hook_font, hook_height, 10))
 
                 # Body block (regular font, normal case)
                 if body_text:
                     body_font = self._find_font(body_font_name, BODY_SIZE, text=body_text)
                     body_lines = self._wrap_text(body_text, body_font, max_text_width)
                     body_height = sum(body_font.getbbox(line)[3] - body_font.getbbox(line)[1] + 12 for line in body_lines)
-                    all_blocks.append((body_lines, body_font, body_height, 12))
+                    all_blocks.append(("body", body_lines, body_font, body_height, 12))
 
                 # CTA block (regular font, uppercase)
                 if cta_text:
                     cta_font = self._find_font(cta_font_name, CTA_SIZE, text=cta_text)
                     cta_lines = self._wrap_text(cta_text.upper(), cta_font, max_text_width)
-                    cta_height = sum(cta_font.getbbox(line)[3] - cta_font.getbbox(line)[1] + 10 for line in cta_lines)
-                    all_blocks.append((cta_lines, cta_font, cta_height, 10))
+                    if cta_style == "button":
+                        # Button needs extra height for padding
+                        cta_height = cta_font.getbbox(cta_text)[3] + 50
+                    else:
+                        cta_height = sum(cta_font.getbbox(line)[3] - cta_font.getbbox(line)[1] + 10 for line in cta_lines)
+                    all_blocks.append(("cta", cta_lines, cta_font, cta_height, 10))
 
                 # Calculate total text height and remaining space
-                total_text_height = sum(block[2] for block in all_blocks)
+                total_text_height = sum(block[3] for block in all_blocks)
                 available_space = height - top_margin - bottom_margin - total_text_height
 
                 # Distribute space evenly between blocks (n blocks = n-1 gaps)
                 num_gaps = max(1, len(all_blocks) - 1)
                 gap_size = max(40, available_space // num_gaps) if available_space > 0 else 40
 
+                # Determine button color for CTA
+                btn_color = "#FF5722" if cta_button_color == "auto" else cta_button_color
+
                 # Draw all blocks with even spacing
                 y_offset = top_margin
-                for i, (lines, font, block_height, line_spacing) in enumerate(all_blocks):
-                    for line in lines:
-                        text_width = self._measure_text_mixed(line, font)
-                        bbox = font.getbbox(line)
-                        x = (width - text_width) // 2
-
-                        self._draw_text_with_outline_mixed(
-                            img,
-                            draw,
-                            (x, y_offset),
-                            line,
-                            font,
-                            fill=text_color,
-                            outline=outline_color,
-                            outline_width=outline_width,
+                for i, (block_type, lines, font, block_height, line_spacing) in enumerate(all_blocks):
+                    if block_type == "cta" and cta_style == "button":
+                        # Draw CTA as button
+                        y_offset = self._draw_cta_button(
+                            img, draw, lines[0], width // 2, y_offset,
+                            font, button_color=btn_color, text_color="white"
                         )
-                        y_offset += bbox[3] - bbox[1] + line_spacing
+                    else:
+                        for line in lines:
+                            text_width = self._measure_text_mixed(line, font)
+                            bbox = font.getbbox(line)
+                            x = (width - text_width) // 2
+
+                            self._draw_text_with_outline_mixed(
+                                img,
+                                draw,
+                                (x, y_offset),
+                                line,
+                                font,
+                                fill=text_color,
+                                outline=outline_color,
+                                outline_width=outline_width,
+                            )
+                            y_offset += bbox[3] - bbox[1] + line_spacing
 
                     # Add gap after block (except last one)
                     if i < len(all_blocks) - 1:
