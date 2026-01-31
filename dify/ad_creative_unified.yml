@@ -220,41 +220,37 @@ workflow:
 
                 FORMAT:
                 1.
-                Hook: [5-8 words]
-                Body: [2 sentences max]
+                Hook: [8-12 words, complete thought]
+                Body: [2-3 natural sentences, ~40 words total]
                 CTA: [2-3 words]
 
-                STRICT RULES -违反 = FAILURE:
+                STYLE:
+                - Sound like a smart person explaining something interesting
+                - Complete sentences, natural flow (NOT choppy telegram-style)
+                - Specific details from the content
+                - No marketing buzzwords, but also not robotic
 
-                BANNED WORDS (never use):
-                - масштабируйте, масштабирование
-                - конверсии, конверсия
-                - эффективность, эффективный
-                - оптимизация, оптимизировать
-                - результат, результаты
-                - рост, растут, вырастет
-                - больше лидов, больше продаж
-                - автоматизация (use конкретное: "нейросеть делает X")
-                - современные инструменты (name them: Clay, GPT)
+                BANNED WORDS:
+                - масштабируйте, конверсии, эффективность, оптимизация
+                - результат, рост, растут, вырастет
+                - автоматизация, современные инструменты, система, схема
 
-                BANNED STRUCTURES:
-                - "X без Y" (холодные продажи без спама)
-                - "как X делает Y"
-                - promises about future ("станет", "будет", "вырастет")
+                GOOD EXAMPLES:
+                Hook: "Как я нахожу ЛПР, которых нет в LinkedIn и Apollo"
+                Body: "Нейросеть ищет упоминания в статьях и новостях. Потом находит email через Clay. Показываю конкретные примеры со скриншотами."
+                CTA: "Читать гайд"
 
-                GOOD EXAMPLES (copy these patterns):
-                - "Clay находит email, которого нет в Apollo. 7 минут."
-                - "Один человек. Таблица. 1000 компаний в день."
-                - "Написал гайд. Без воды, без продажи в конце."
-                - "ЛПР, которые не сидят в LinkedIn. Вот как их найти."
+                Hook: "Написал гайд про B2B-лидген. 7 минут, без воды."
+                Body: "Объясняю, как один человек с таблицей и нейросетью делает работу отдела. Реальные кейсы из моей практики в США, EU и РФ."
+                CTA: "Открыть"
 
-                BAD EXAMPLES (never write like this):
-                - "Масштабируйте продажи без найма" ← marketing speak
-                - "Конверсии растут" ← vague promise
-                - "Лидов станет больше" ← empty promise
-                - "Современные инструменты находят контакты" ← generic
+                BAD (too choppy):
+                - "Гайд. Холодные продажи. Без воды." ← robotic
+                - "Таблица. Нейросеть. Письма." ← too compressed
 
-                VOICE: Telegram message to a friend. Factual. Specific. Zero hype.
+                BAD (marketing speak):
+                - "Масштабируйте продажи" ← buzzword
+                - "Эффективный подход к лидгену" ← generic
             - id: usr
               role: user
               text: |
