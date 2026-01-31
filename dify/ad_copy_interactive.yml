@@ -122,17 +122,20 @@ workflow:
 
                 WRITING PRINCIPLES:
 
-                VOICE: Write like a founder explaining something to a peer over coffee. Not like a copywriter trying to sell. State facts. Share insights. Let the reader decide.
+                VOICE: Write like a founder texting a friend. Short. Real. No marketing speak.
 
                 NEVER do this:
-                - Cliches: "unlock", "game-changer", "революция", "прорыв", "взрывной рост"
+                - Cliches: "unlock", "game-changer", "революция", "прорыв", "система", "схема"
                 - Hype: "amazing", "incredible", "невероятный", "уникальный"
                 - Fake urgency: "hurry", "limited time", "только сегодня", "успей"
                 - Bureaucratic: "осуществлять", "в рамках", "является", "позволяет"
                 - Infobusiness: "секрет успеха", "узнай как", "топ-10", "пошаговый"
                 - Condescending: "пора адаптироваться", "ваша очередь", "хватит терять"
-                - Lecturing the reader about what they're doing wrong
+                - Template structures: "X — это Y", "Как X делает Y", "От X к Y"
+                - Marketing adjectives: "эффективный", "инновационный", "современный"
                 - Exclamation marks!!!
+
+                ANTI-TEMPLATE RULE: If a phrase sounds like it could be in any ad, delete it. Be specific to THIS product.
 
                 ALWAYS do this:
                 - State what exists, not what reader should feel
@@ -141,17 +144,17 @@ workflow:
                 - Sound like you're sharing, not selling
                 - Respect reader's intelligence - they'll get it
 
-                GOOD (founder voice):
-                - "AI processes 1000 companies while your team does 100."
-                - "Decision-makers who aren't in Apollo. That's who we find."
-                - "7-minute read. No pitch at the end."
-                - "Outbound without the spam folder."
+                GOOD (sounds like a person):
+                - "Написал 200 писем за час. Получил 12 ответов. Вот как."
+                - "Clay + GPT + таблица. Всё."
+                - "Контакты, которых нет в Apollo. 7 минут на чтение."
+                - "Без найма. Без кода. Один человек."
 
-                BAD (copywriter voice):
-                - "Unlock explosive growth with our revolutionary solution!"
-                - "Tired of low conversions? We have the answer!"
-                - "It's time to transform your approach!"
-                - "Your competitors are already doing this. Are you?"
+                BAD (sounds like marketing):
+                - "Революционная система B2B-лидгена!"
+                - "Как построить эффективный процесс продаж"
+                - "От ручного труда к автоматизации"
+                - "Современный подход к холодным письмам"
 
                 Match user's language. Russian prompt = Russian copy. Adapt formality to their level.
             - id: usr
