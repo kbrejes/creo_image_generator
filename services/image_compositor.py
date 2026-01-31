@@ -49,37 +49,51 @@ class ImageCompositor:
     }
 
     # Font paths (system fonts)
+    # User-friendly names map to internal font names
+    FONT_STYLES = {
+        "bold": "impact",
+        "clean": "liberation",
+        "modern": "arial_bold",
+        "classic": "arial",
+    }
+
     FONT_PATHS = {
-        # Bold fonts
+        # Bold fonts - prioritize Cyrillic support
         "impact": [
-            "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",  # Linux Docker
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",  # Linux - good Cyrillic
+            "/System/Library/Fonts/Supplemental/Arial Bold.ttf",  # macOS
             "/System/Library/Fonts/Supplemental/Impact.ttf",  # macOS
+            "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",  # Linux Docker
             "/usr/share/fonts/truetype/msttcorefonts/Impact.ttf",  # Linux
             "C:\\Windows\\Fonts\\impact.ttf",  # Windows
         ],
         "arial_bold": [
-            "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",  # Linux Docker
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",  # Linux - good Cyrillic
             "/System/Library/Fonts/Supplemental/Arial Bold.ttf",
             "/Library/Fonts/Arial Bold.ttf",
+            "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",  # Linux Docker
             "/usr/share/fonts/truetype/msttcorefonts/Arial_Bold.ttf",
             "C:\\Windows\\Fonts\\arialbd.ttf",
         ],
         "helvetica_bold": [
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",  # Linux - good Cyrillic
             "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",  # Linux Docker
             "/System/Library/Fonts/Helvetica.ttc",
             "/Library/Fonts/Helvetica.ttc",
         ],
-        # Regular fonts (non-bold)
+        # Regular fonts (non-bold) - prioritize Cyrillic support
         "arial": [
-            "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",  # Linux Docker
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",  # Linux - good Cyrillic
             "/System/Library/Fonts/Supplemental/Arial.ttf",  # macOS
             "/Library/Fonts/Arial.ttf",
+            "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",  # Linux Docker
             "/usr/share/fonts/truetype/msttcorefonts/Arial.ttf",  # Linux
             "C:\\Windows\\Fonts\\arial.ttf",  # Windows
         ],
         "liberation": [
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",  # Linux - good Cyrillic
             "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",  # Linux Docker
-            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",  # Fallback
+            "/System/Library/Fonts/Supplemental/Arial.ttf",  # macOS fallback
         ],
         "noto_emoji": [
             "/usr/share/fonts/truetype/noto/NotoColorEmoji.ttf",  # Linux Docker
@@ -307,7 +321,7 @@ class ImageCompositor:
         font: ImageFont.FreeTypeFont,
         fill: str = "white",
         outline: str = "black",
-        outline_width: int = 3,
+        outline_width: int = 2,
     ):
         """Draw text with outline/stroke effect."""
         x, y = position
@@ -317,6 +331,25 @@ class ImageCompositor:
             for dy in range(-outline_width, outline_width + 1):
                 if dx != 0 or dy != 0:
                     draw.text((x + dx, y + dy), text, font=font, fill=outline)
+
+        # Draw main text
+        draw.text((x, y), text, font=font, fill=fill)
+
+    def _draw_text_with_shadow(
+        self,
+        draw: ImageDraw.ImageDraw,
+        position: tuple[int, int],
+        text: str,
+        font: ImageFont.FreeTypeFont,
+        fill: str = "white",
+        shadow_color: str = "black",
+        shadow_offset: int = 4,
+    ):
+        """Draw text with drop shadow effect - cleaner than outline."""
+        x, y = position
+
+        # Draw shadow (offset down and right)
+        draw.text((x + shadow_offset, y + shadow_offset), text, font=font, fill=shadow_color)
 
         # Draw main text
         draw.text((x, y), text, font=font, fill=fill)
@@ -380,7 +413,8 @@ class ImageCompositor:
         cta_font_size: int = 36,
         text_color: str = "white",
         outline_color: str = "black",
-        outline_width: int = 3,
+        outline_width: int = 2,  # Thinner outline for cleaner look
+        text_style: str = "outline",  # "outline", "shadow", or "none"
         padding: int = 40,
         cta_emoji: bool = False,
         bold_hook: bool = True,
@@ -428,17 +462,16 @@ class ImageCompositor:
 
             max_text_width = width - left_margin - right_margin
 
-            # Define safe zones - top 35% and bottom 35% of image
-            # This leaves the middle 30% clear for faces/subjects
-            top_zone_height = int(height * 0.35) - top_margin
-            bottom_zone_height = int(height * 0.35) - bottom_margin
-            bottom_zone_start = int(height * 0.65)
+            # Define safe zones - top 40% and bottom 40% of image
+            # This leaves the middle 20% clear for faces/subjects (reduced gap)
+            top_zone_height = int(height * 0.40) - top_margin
+            bottom_zone_height = int(height * 0.40) - bottom_margin
+            bottom_zone_start = int(height * 0.60)
 
-            # Uniform font sizes - max 30% difference between any two
-            # CTA is largest, hook medium, body smallest
-            BODY_SIZE = 55
-            HOOK_SIZE = 65  # 18% larger than body
-            CTA_SIZE = 70   # 27% larger than body, largest
+            # Font sizes - hierarchy: hook dominant, body readable, CTA clear
+            HOOK_SIZE = 76
+            BODY_SIZE = 40
+            CTA_SIZE = 50
             MIN_FONT_SIZE = 28
 
             # Font selection: bold for hook (if enabled), regular for body/CTA
@@ -465,15 +498,15 @@ class ImageCompositor:
                 if hook_text:
                     hook_font = self._find_font(hook_font_name, HOOK_SIZE, text=hook_text)
                     hook_lines = self._wrap_text(hook_text.upper(), hook_font, max_text_width)
-                    hook_height = sum(hook_font.getbbox(line)[3] - hook_font.getbbox(line)[1] + 10 for line in hook_lines)
-                    all_blocks.append(("hook", hook_lines, hook_font, hook_height, 10))
+                    hook_height = sum(hook_font.getbbox(line)[3] - hook_font.getbbox(line)[1] + 6 for line in hook_lines)
+                    all_blocks.append(("hook", hook_lines, hook_font, hook_height, 6))
 
                 # Body block (regular font, normal case)
                 if body_text:
                     body_font = self._find_font(body_font_name, BODY_SIZE, text=body_text)
                     body_lines = self._wrap_text(body_text, body_font, max_text_width)
-                    body_height = sum(body_font.getbbox(line)[3] - body_font.getbbox(line)[1] + 12 for line in body_lines)
-                    all_blocks.append(("body", body_lines, body_font, body_height, 12))
+                    body_height = sum(body_font.getbbox(line)[3] - body_font.getbbox(line)[1] + 8 for line in body_lines)
+                    all_blocks.append(("body", body_lines, body_font, body_height, 8))
 
                 # CTA block (regular font, uppercase)
                 if cta_text:
@@ -483,22 +516,22 @@ class ImageCompositor:
                         # Button needs extra height for padding
                         cta_height = cta_font.getbbox(cta_text)[3] + 50
                     else:
-                        cta_height = sum(cta_font.getbbox(line)[3] - cta_font.getbbox(line)[1] + 10 for line in cta_lines)
-                    all_blocks.append(("cta", cta_lines, cta_font, cta_height, 10))
+                        cta_height = sum(cta_font.getbbox(line)[3] - cta_font.getbbox(line)[1] + 6 for line in cta_lines)
+                    all_blocks.append(("cta", cta_lines, cta_font, cta_height, 6))
 
                 # Calculate total text height and remaining space
                 total_text_height = sum(block[3] for block in all_blocks)
-                available_space = height - top_margin - bottom_margin - total_text_height
 
-                # Distribute space evenly between blocks (n blocks = n-1 gaps)
+                # Fixed gap between blocks (70px) - centered vertically
+                gap_size = 70
                 num_gaps = max(1, len(all_blocks) - 1)
-                gap_size = max(40, available_space // num_gaps) if available_space > 0 else 40
+                total_content_height = total_text_height + (gap_size * num_gaps)
 
                 # Determine button color for CTA
                 btn_color = "#FF5722" if cta_button_color == "auto" else cta_button_color
 
-                # Draw all blocks with even spacing
-                y_offset = top_margin
+                # Center content vertically
+                y_offset = (height - total_content_height) // 2
                 for i, (block_type, lines, font, block_height, line_spacing) in enumerate(all_blocks):
                     if block_type == "cta" and cta_style == "button":
                         # Draw CTA as button
@@ -529,7 +562,7 @@ class ImageCompositor:
                         y_offset += gap_size
 
             else:
-                # === AI BACKGROUND: Hook at top, body+CTA at bottom (safe zone in middle) ===
+                # === AI BACKGROUND: Hook at top, body+CTA at bottom (smaller gap in middle) ===
 
                 # Draw hook text at top (bold if enabled)
                 if hook_text:
@@ -546,11 +579,11 @@ class ImageCompositor:
                             draw, (x, y_offset), line, hook_font,
                             fill=text_color, outline=outline_color, outline_width=outline_width
                         )
-                        y_offset += bbox[3] - bbox[1] + 15
+                        y_offset += bbox[3] - bbox[1] + 8
 
                 # Body and CTA at bottom (regular font)
                 max_bottom_y = height - bottom_margin
-                min_body_y = bottom_zone_start + top_margin
+                min_body_y = bottom_zone_start
 
                 if body_text or cta_text:
                     current_body_size = BODY_SIZE
@@ -565,7 +598,7 @@ class ImageCompositor:
                             text_blocks.append(("body", body_lines, body_font))
                             for line in body_lines:
                                 bbox = body_font.getbbox(line)
-                                total_height += bbox[3] - bbox[1] + 12
+                                total_height += bbox[3] - bbox[1] + 8
 
                         if cta_text:
                             cta_size = int(CTA_SIZE * current_body_size / BODY_SIZE)
@@ -573,13 +606,13 @@ class ImageCompositor:
                             cta_lines = self._wrap_text(cta_text.upper(), cta_font, max_text_width)
                             text_blocks.append(("cta", cta_lines, cta_font))
                             if body_text:
-                                total_height += 40
+                                total_height += 25  # Reduced gap between body and CTA
                             if cta_style == "button":
                                 total_height += cta_font.getbbox(cta_text)[3] + 50
                             else:
                                 for line in cta_lines:
                                     bbox = cta_font.getbbox(line)
-                                    total_height += bbox[3] - bbox[1] + 12
+                                    total_height += bbox[3] - bbox[1] + 8
 
                         if total_height <= (max_bottom_y - min_body_y):
                             break
@@ -618,9 +651,9 @@ class ImageCompositor:
                                     outline=outline_color,
                                     outline_width=outline_width,
                                 )
-                                y_offset += bbox[3] - bbox[1] + 12
+                                y_offset += bbox[3] - bbox[1] + 8
                         if i < len(text_blocks) - 1:
-                            y_offset += 40
+                            y_offset += 25  # Reduced gap
 
             # Save to bytes
             output = io.BytesIO()

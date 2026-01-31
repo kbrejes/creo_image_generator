@@ -133,15 +133,23 @@ workflow:
               required: false
               type: text-input
               variable: audience
-            - label: "Ad Style (optional)"
+            - label: "Tone of Voice"
               required: false
               type: select
-              variable: style
+              variable: tone
               options:
-                - "Humorous"
-                - "Professional"
-                - "Urgent"
-                - "Educational"
+                - "Clean & Minimalist"
+                - "Direct & Confident"
+                - "Casual & Friendly"
+                - "Professional & Trustworthy"
+                - "Bold & Provocative"
+                - "Playful & Humorous"
+                - "Meme-style / Ugly Ad"
+            - label: "Things to AVOID in copy (e.g., 'discount', 'cheap', certain phrases)"
+              max_length: 500
+              required: false
+              type: text-input
+              variable: avoid
             - label: "Custom Hook Text (optional - overrides AI)"
               max_length: 100
               required: false
@@ -249,6 +257,29 @@ workflow:
 
                 Use extracted info from content, or fall back to manual inputs if no content provided.
 
+                TONE OF VOICE: If a tone is specified, match that tone throughout all copy:
+                - Casual & Friendly: conversational, approachable, like talking to a friend
+                - Professional & Trustworthy: confident, credible, business-appropriate
+                - Bold & Provocative: edgy, attention-grabbing, challenges status quo
+                - Urgent & FOMO: creates urgency, fear of missing out, time-sensitive
+                - Playful & Humorous: witty, fun, uses humor appropriately
+                - Educational & Informative: teaches, explains, adds value
+                - Luxurious & Premium: sophisticated, exclusive, high-end feel
+                - Empathetic & Supportive: understanding, compassionate, solution-focused
+                - Clean & Minimalist: Apple-like simplicity, let value speak for itself
+
+                THINGS TO AVOID: If specified, absolutely DO NOT use these words, phrases, or concepts in any copy.
+
+                ALWAYS AVOID (unless user wants hype-style):
+                - Cliches: "unlock", "game-changer", "revolutionary", "secret"
+                - Hype: "amazing", "incredible", "explosive growth"
+                - Fake urgency: "hurry", "limited time", "act now"
+                - Empty buzzwords without substance
+                - Exclamation marks overuse
+                - Infobusiness style trash
+
+                GOOD COPY = specific, concrete, human, intelligent. Write like a smart person talking to another smart person.
+
                 Output JSON only:
                 {"variations": [{"hook": "...", "body": "...", "cta": "..."}, ...]}
             - id: usr
@@ -260,7 +291,12 @@ workflow:
                 === MANUAL INPUTS (use if no content above) ===
                 Product: {{#1.product#}}
                 Target Audience: {{#1.audience#}}
-                Desired Style: {{#1.style#}}
+
+                === TONE OF VOICE ===
+                {{#1.tone#}}
+
+                === THINGS TO AVOID (never use these words/phrases) ===
+                {{#1.avoid#}}
 
                 === NUMBER OF CREATIVES ===
                 Generate exactly {{#1.num_creatives#}} unique variations (if empty or 0, generate 1)
@@ -285,8 +321,12 @@ workflow:
               variable: audience
             - value_selector:
                 - "1"
-                - style
-              variable: style
+                - tone
+              variable: tone
+            - value_selector:
+                - "1"
+                - avoid
+              variable: avoid
             - value_selector:
                 - sys
                 - query

@@ -233,6 +233,7 @@ async def api_compose_ad(
     cta_text: str = "",
     output_size: str = "instagram_square",
     font_name: str = "impact",
+    font_style: str = "",  # "bold", "clean", "modern"
     hook_font_size: int = 120,
     body_font_size: int = 60,
     cta_font_size: int = 48,
@@ -254,6 +255,12 @@ async def api_compose_ad(
     # Parse boolean toggles from string
     use_cta_emoji = cta_emoji and "yes" in cta_emoji.lower()
     use_bold_hook = not bold_hook or "yes" in bold_hook.lower()  # Default to yes
+
+    # Map font_style to font_name
+    style_to_font = {"bold": "impact", "clean": "liberation", "modern": "arial_bold"}
+    if font_style:
+        font_style_lower = font_style.lower().replace(" (default)", "")
+        font_name = style_to_font.get(font_style_lower, font_name)
 
     compositor = ImageCompositor()
     return await compositor.compose(
