@@ -552,10 +552,43 @@ async def api_compose_modern(
 async def get_openapi_for_dify():
     """
     Get OpenAPI schema formatted for Dify import.
-
-    Dify can import tools from an OpenAPI schema. This endpoint provides
-    the schema in the format Dify expects.
+    Converts OpenAPI 3.1.0 to 3.0.0 for Dify compatibility.
     """
+    import copy
     from main import app
 
-    return app.openapi()
+    schema = copy.deepcopy(app.openapi())
+
+    # Downgrade to 3.0.0 for Dify compatibility
+    schema["openapi"] = "3.0.0"
+
+    # Fix 3.1.0 -> 3.0.0 incompatibilities
+    def fix_schema(obj):
+        if isinstance(obj, dict):
+            # Remove 'examples' (3.1.0), keep 'example' (3.0.0)
+            if "examples" in obj and "example" not in obj:
+                examples = obj.pop("examples")
+                if examples:
+                    obj["example"] = list(examples.values())[0] if isinstance(examples, dict) else examples[0]
+            elif "examples" in obj:
+                del obj["examples"]
+
+            # Convert anyOf with null to nullable (3.0.0 style)
+            if "anyOf" in obj:
+                types = obj["anyOf"]
+                non_null = [t for t in types if t != {"type": "null"} and t.get("type") != "null"]
+                has_null = len(non_null) < len(types)
+                if len(non_null) == 1:
+                    obj.update(non_null[0])
+                    del obj["anyOf"]
+                    if has_null:
+                        obj["nullable"] = True
+
+            for v in obj.values():
+                fix_schema(v)
+        elif isinstance(obj, list):
+            for item in obj:
+                fix_schema(item)
+
+    fix_schema(schema)
+    return schema
