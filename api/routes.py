@@ -21,6 +21,7 @@ from tools.image_gen import generate_image, compare_backends
 from tools.reference import analyze_reference, search_references
 from tools.video_gen import generate_video
 from services.image_compositor import ImageCompositor
+from services.modern_compositor import ModernCompositor, DesignPreset
 
 router = APIRouter()
 
@@ -441,6 +442,100 @@ async def api_compose_batch(
         "count": len(results),
         "creatives": results,
     }
+
+
+# ===================
+# Modern Compositor (pictex)
+# ===================
+
+
+@router.post(
+    "/tools/compose-modern",
+    tags=["Compositing"],
+    summary="Compose ad with modern text effects",
+    description="""Create professional ad creatives with modern text effects using pictex.
+
+Presets:
+- neon: Glowing neon text on dark background
+- minimal: Clean white background with subtle shadows
+- gradient: Gradient background with shadowed text
+- bold: High contrast with colored text stroke
+- glass: Glassmorphism style with semi-transparent CTA
+
+Output sizes: instagram_square, instagram_story, instagram_reels, instagram_portrait,
+facebook_feed, telegram, tiktok, youtube_thumbnail
+""",
+)
+async def api_compose_modern(
+    hook_text: str,
+    body_text: str = "",
+    cta_text: str = "Подробнее →",
+    preset: str = "neon",
+    output_size: str = "instagram_square",
+    background_image_url: str = "",
+):
+    """
+    Compose an ad with modern text effects.
+
+    Args:
+        hook_text: Main headline/hook (required)
+        body_text: Supporting body text
+        cta_text: Call-to-action button text
+        preset: Design preset (neon, minimal, gradient, bold, glass)
+        output_size: Output dimensions preset
+        background_image_url: Optional background image URL (will darken and overlay text)
+    """
+    from services.storage import get_storage_service
+
+    try:
+        # Validate preset
+        try:
+            design_preset = DesignPreset(preset.lower())
+        except ValueError:
+            return {
+                "success": False,
+                "error": f"Invalid preset '{preset}'. Valid: neon, minimal, gradient, bold, glass",
+            }
+
+        compositor = ModernCompositor()
+
+        # Choose composition method based on background image
+        if background_image_url:
+            image_bytes = compositor.compose_with_image_overlay(
+                hook_text=hook_text,
+                body_text=body_text,
+                cta_text=cta_text,
+                background_image_url=background_image_url,
+                preset=design_preset,
+                output_size=output_size,
+                darken=0.5,
+            )
+        else:
+            image_bytes = compositor.compose(
+                hook_text=hook_text,
+                body_text=body_text,
+                cta_text=cta_text,
+                preset=design_preset,
+                output_size=output_size,
+            )
+
+        # Upload to storage
+        storage = get_storage_service()
+        filename, url = await storage.save(image_bytes)
+
+        return {
+            "success": True,
+            "url": url,
+            "filename": filename,
+            "preset": preset,
+            "output_size": output_size,
+        }
+
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e),
+        }
 
 
 # ===================
