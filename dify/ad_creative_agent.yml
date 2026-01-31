@@ -1,216 +1,306 @@
 app:
-  description: Auto-generates ad creatives using your self-hosted API with 4 visual formats
-  icon: 🎨
-  icon_background: '#FFEAD5'
+  description: Auto-generates ad creatives with 4 visual formats
+  icon: "\U0001F3A8"
+  icon_background: "#FFEAD5"
   mode: workflow
   name: Ad Creative Agent
+  use_icon_as_answer_icon: false
+
+kind: app
+version: 0.1.3
 
 workflow:
+  conversation_variables: []
+  environment_variables: []
+  features:
+    file_upload:
+      enabled: false
+      image:
+        enabled: false
+    retriever_resource:
+      enabled: false
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    suggested_questions: []
+    suggested_questions_after_answer:
+      enabled: false
+    text_to_speech:
+      enabled: false
   graph:
     edges:
-    - source: start
-      target: analyze_brief
-    - source: analyze_brief
-      target: generate_copy
-    - source: generate_copy
-      target: generate_image
-    - source: generate_image
-      target: batch_compose
-    - source: batch_compose
-      target: end_node
-
+      - data:
+          isInIteration: false
+          sourceType: start
+          targetType: llm
+        id: e1
+        source: "1"
+        sourceHandle: source
+        target: "2"
+        targetHandle: target
+        type: custom
+      - data:
+          isInIteration: false
+          sourceType: llm
+          targetType: llm
+        id: e2
+        source: "2"
+        sourceHandle: source
+        target: "3"
+        targetHandle: target
+        type: custom
+      - data:
+          isInIteration: false
+          sourceType: llm
+          targetType: http-request
+        id: e3
+        source: "3"
+        sourceHandle: source
+        target: "4"
+        targetHandle: target
+        type: custom
+      - data:
+          isInIteration: false
+          sourceType: http-request
+          targetType: http-request
+        id: e4
+        source: "4"
+        sourceHandle: source
+        target: "5"
+        targetHandle: target
+        type: custom
+      - data:
+          isInIteration: false
+          sourceType: http-request
+          targetType: end
+        id: e5
+        source: "5"
+        sourceHandle: source
+        target: "6"
+        targetHandle: target
+        type: custom
     nodes:
-    - data:
-        title: Start
-        type: start
-        variables:
-        - label: Ad Request
-          max_length: 1000
-          options: []
-          required: true
-          type: paragraph
-          variable: query
-        - label: Visual Format
-          type: select
-          variable: format_type
-          default: meme
-          options:
-            - value: meme
-              label: Meme Style (text over image)
-            - value: text_only
-              label: Text Only (white background)
-            - value: stickers
-              label: Text + Stickers
-            - value: split
-              label: Split Screen (photo left, text right)
-        - label: CTA Style
-          type: select
-          variable: cta_style
-          default: text
-          options:
-            - value: text
-              label: Text
-            - value: button
-              label: Button (rounded rectangle)
-        - label: Right Side Color (for split format)
-          type: text-input
-          variable: right_bg_color
-          default: white
-          required: false
-      id: start
-      position:
-        x: 80
-        y: 282
-      type: start
+      - data:
+          desc: "Configure your ad creative"
+          selected: false
+          title: Start
+          type: start
+          variables:
+            - label: "Ad Request (describe what you want)"
+              max_length: 1000
+              required: true
+              type: paragraph
+              variable: query
+            - label: "Visual Format"
+              required: false
+              type: select
+              variable: format_type
+              options:
+                - "meme"
+                - "text_only"
+                - "split"
+                - "stickers"
+              default: "meme"
+            - label: "CTA Style"
+              required: false
+              type: select
+              variable: cta_style
+              options:
+                - "text"
+                - "button"
+              default: "text"
+            - label: "Right Side Color (for split format)"
+              max_length: 20
+              required: false
+              type: text-input
+              variable: right_bg_color
+              default: "white"
+        height: 150
+        id: "1"
+        position:
+          x: 80
+          y: 282
+        type: custom
+        width: 244
 
-    - data:
-        model:
-          completion_params:
-            temperature: 0.7
-          mode: chat
-          name: gpt-4o
-          provider: openai
-        prompt_template:
-        - role: system
-          text: |
-            You are an expert Creative Director. Analyze the user's request.
+      - data:
+          context:
+            enabled: false
+            variable_selector: []
+          desc: Analyze the ad request
+          model:
+            completion_params:
+              temperature: 0.7
+            mode: chat
+            name: gpt-4o
+            provider: openai
+          prompt_template:
+            - id: sys
+              role: system
+              text: |
+                You are an expert Creative Director. Analyze the user's request.
 
-            User selected format: {{#start.format_type#}}
-            User selected CTA style: {{#start.cta_style#}}
+                User selected format: {{#1.format_type#}}
+                User selected CTA style: {{#1.cta_style#}}
 
-            Extract:
-            1. Product Name
-            2. Target Audience
-            3. Visual Style (Cyberpunk, Minimalist, etc.)
-            4. Platform (Instagram, LinkedIn, etc.)
-            5. Number of variations requested (default to 3)
+                Extract:
+                1. Product Name
+                2. Target Audience
+                3. Visual Style
+                4. Platform (use: instagram_square, instagram_story, tiktok, youtube_shorts)
+                5. Number of variations (default: 3)
 
-            For platform, use one of: instagram_square, instagram_story, instagram_reels, tiktok, facebook_feed, twitter, youtube_shorts
+                Output ONLY valid JSON:
+                {
+                  "platform": "instagram_square",
+                  "num_variations": 3,
+                  "text_color": "white",
+                  "prompt": "Detailed image generation prompt for the background...",
+                  "negative_prompt": "text, words, letters, bad quality, blurry",
+                  "safe_zone": "auto"
+                }
+            - id: user
+              role: user
+              text: "{{#1.query#}}"
+          selected: false
+          title: Analyze Brief
+          type: llm
+          vision:
+            enabled: false
+        height: 98
+        id: "2"
+        position:
+          x: 380
+          y: 282
+        type: custom
+        width: 244
 
-            Output ONLY valid JSON:
-            {
-              "platform": "instagram_square",
-              "num_variations": 3,
-              "text_color": "white",
-              "prompt": "Detailed image generation prompt...",
-              "negative_prompt": "text, bad quality, blurry",
-              "safe_zone": "auto"
-            }
+      - data:
+          context:
+            enabled: false
+            variable_selector: []
+          desc: Generate ad copy variations
+          model:
+            completion_params:
+              temperature: 0.8
+            mode: chat
+            name: gpt-4o
+            provider: openai
+          prompt_template:
+            - id: sys
+              role: system
+              text: |
+                Generate ad copy variations based on this brief.
 
-            Note: For text_only or stickers format, the prompt is still useful for sticker selection theme.
-        - role: user
-          text: '{{#start.query#}}'
-        title: Analyze Brief
-      id: analyze_brief
-      position:
-        x: 380
-        y: 282
-      type: llm
+                Brief: {{#2.text#}}
 
-    - data:
-        model:
-          completion_params:
-            temperature: 0.7
-          mode: chat
-          name: gpt-4o
-          provider: openai
-        prompt_template:
-        - role: system
-          text: |
-            Generate ad copy variations based on this brief.
+                Output ONLY valid JSON array:
+                [
+                  {"hook": "Punchy Hook 1", "body": "Short body text", "cta": "Shop Now"},
+                  {"hook": "Punchy Hook 2", "body": "Short body text", "cta": "Learn More"}
+                ]
 
-            Brief: {{#analyze_brief.text#}}
+                Generate exactly the number of variations requested in the brief.
+          selected: false
+          title: Generate Copy
+          type: llm
+          vision:
+            enabled: false
+        height: 98
+        id: "3"
+        position:
+          x: 680
+          y: 282
+        type: custom
+        width: 244
 
-            Output ONLY valid JSON array of objects:
-            [
-              {"hook": "Hook 1", "body": "Body 1", "cta": "CTA 1"},
-              {"hook": "Hook 2", "body": "Body 2", "cta": "CTA 2"}
-            ]
-        title: Generate Copy
-      id: generate_copy
-      position:
-        x: 680
-        y: 282
-      type: llm
+      - data:
+          authorization:
+            config: null
+            type: no-auth
+          body:
+            data: |
+              {
+                "prompt": "{{#2.text#}}",
+                "backend": "flux",
+                "size": "1024x1024",
+                "num_images": 1
+              }
+            type: json
+          desc: Generate AI background image
+          headers: "Content-Type: application/json"
+          method: post
+          selected: false
+          timeout:
+            connect: 10
+            read: 120
+            write: 10
+          title: Generate Image
+          type: http-request
+          url: https://creo.yourads.io/tools/generate-image
+        height: 98
+        id: "4"
+        position:
+          x: 980
+          y: 282
+        type: custom
+        width: 244
 
-    - data:
-        authorization:
-          config: null
-          type: no-auth
-        body:
-          data: |
-            {
-              "prompt": "{{#analyze_brief.json.prompt#}}",
-              "backend": "flux",
-              "size": "1024x1024",
-              "num_images": 1
-            }
-          type: json
-        headers:
-          Content-Type: application/json
-        method: post
-        timeout:
-          connect: 10
-          read: 120
-          write: 10
-        title: Generate Image
-        url: https://creo.yourads.io/tools/generate-image
-        variables: []
-      id: generate_image
-      position:
-        x: 980
-        y: 282
-      type: http-request
+      - data:
+          authorization:
+            config: null
+            type: no-auth
+          body:
+            data: ""
+            type: none
+          desc: Compose final ad creatives
+          headers: "Content-Type: application/json"
+          method: post
+          params:
+            - key: image_url
+              value: "{{#4.body.images[0].url#}}"
+            - key: variations_json
+              value: "{{#3.text#}}"
+            - key: output_size
+              value: "instagram_square"
+            - key: format_type
+              value: "{{#1.format_type#}}"
+            - key: cta_style
+              value: "{{#1.cta_style#}}"
+            - key: right_bg_color
+              value: "{{#1.right_bg_color#}}"
+            - key: safe_zone
+              value: "auto"
+          selected: false
+          timeout:
+            connect: 10
+            read: 120
+            write: 10
+          title: Batch Compose
+          type: http-request
+          url: https://creo.yourads.io/tools/compose-batch
+        height: 98
+        id: "5"
+        position:
+          x: 1280
+          y: 282
+        type: custom
+        width: 244
 
-    - data:
-        authorization:
-          config: null
-          type: no-auth
-        body:
-          data: ''
-          type: none
-        headers:
-          Content-Type: application/json
-        method: post
-        params:
-        - key: image_url
-          value: '{{#generate_image.body.images[0].url#}}'
-        - key: variations_json
-          value: '{{#generate_copy.text#}}'
-        - key: output_size
-          value: '{{#analyze_brief.json.platform#}}'
-        - key: text_color
-          value: '{{#analyze_brief.json.text_color#}}'
-        - key: format_type
-          value: '{{#start.format_type#}}'
-        - key: cta_style
-          value: '{{#start.cta_style#}}'
-        - key: right_bg_color
-          value: '{{#start.right_bg_color#}}'
-        - key: safe_zone
-          value: '{{#analyze_brief.json.safe_zone#}}'
-        timeout:
-          connect: 10
-          read: 120
-          write: 10
-        title: Batch Compose
-        url: https://creo.yourads.io/tools/compose-batch
-        variables: []
-      id: batch_compose
-      position:
-        x: 1280
-        y: 282
-      type: http-request
-
-    - data:
-        outputs:
-        - value_selector:
-          - batch_compose
-          - body
-          variable: result
-        title: End
-      id: end_node
-      position:
-        x: 1580
-        y: 282
-      type: end
+      - data:
+          outputs:
+            - value_selector:
+                - "5"
+                - body
+              variable: result
+          selected: false
+          title: End
+          type: end
+        height: 90
+        id: "6"
+        position:
+          x: 1580
+          y: 282
+        type: custom
+        width: 244
