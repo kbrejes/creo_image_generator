@@ -893,11 +893,11 @@ class ImageCompositor:
                 actual_text_color = text_color if text_color != "auto" else "white"
                 outline_color = "black" if actual_text_color == "white" else "white"
 
-            # Font sizes
-            HOOK_SIZE = 60
-            BODY_SIZE = 45
-            CTA_SIZE = 40
-            MIN_SIZE = 24
+            # Font sizes - uniform
+            HOOK_SIZE = 72
+            BODY_SIZE = 65
+            CTA_SIZE = 65
+            MIN_SIZE = 28
 
             # Calculate text positioning - center vertically in right half
             all_blocks = []
@@ -1022,10 +1022,10 @@ class ImageCompositor:
                 actual_text_color = text_color
                 outline_color = "black" if text_color == "white" else "white"
 
-            # Font sizes
-            HOOK_SIZE = 70
-            BODY_SIZE = 50
-            CTA_SIZE = 45
+            # Font sizes - uniform
+            HOOK_SIZE = 72
+            BODY_SIZE = 65
+            CTA_SIZE = 65
 
             # Calculate text layout first
             all_blocks = []
