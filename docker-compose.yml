@@ -18,8 +18,9 @@ services:
       - ./outputs:/app/outputs
     restart: unless-stopped
     networks:
-      - caddy_network
+      - pm-network
 
 networks:
-  caddy_network:
+  pm-network:
+    name: pm-agent_pm-network
     external: true
