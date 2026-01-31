@@ -1,7 +1,7 @@
 {
   "app": {
     "name": "Ad Creative Agent",
-    "description": "Auto-generates ad creatives using your self-hosted API",
+    "description": "Auto-generates ad creatives with 4 visual formats (meme, text_only, split, stickers)",
     "mode": "workflow",
     "icon": "🎨",
     "icon_background": "#FFEAD5"
@@ -17,10 +17,42 @@
             "title": "Start",
             "variables": [
               {
-                "label": "Input",
+                "label": "Ad Request",
                 "variable": "query",
                 "type": "paragraph",
-                "required": true
+                "required": true,
+                "max_length": 1000
+              },
+              {
+                "label": "Visual Format",
+                "variable": "format_type",
+                "type": "select",
+                "required": true,
+                "default": "meme",
+                "options": [
+                  { "value": "meme", "label": "Meme Style (text over image)" },
+                  { "value": "text_only", "label": "Text Only (white background)" },
+                  { "value": "split", "label": "Split Screen (photo left, text right)" },
+                  { "value": "stickers", "label": "Text + Stickers" }
+                ]
+              },
+              {
+                "label": "CTA Style",
+                "variable": "cta_style",
+                "type": "select",
+                "required": false,
+                "default": "text",
+                "options": [
+                  { "value": "text", "label": "Text" },
+                  { "value": "button", "label": "Button (rounded rectangle)" }
+                ]
+              },
+              {
+                "label": "Right Side Color (for split)",
+                "variable": "right_bg_color",
+                "type": "text-input",
+                "required": false,
+                "default": "white"
               }
             ]
           }
@@ -40,26 +72,7 @@
             "prompt_template": [
               {
                 "role": "system",
-                "text": "You are an expert Creative Director. Analyze the user's request.
-
-Extract:
-1. Product Name
-2. Target Audience
-3. Visual Style (Cyberpunk, Minimalist, etc.)
-4. Platform (Instagram, LinkedIn, etc.)
-5. Number of variations requested (default to 3 if not specified)
-
-Output ONLY valid JSON:
-{
-  "product": "...",
-  "audience": "...",
-  "style": "...",
-  "platform": "instagram_square",
-  "num_variations": 3,
-  "text_color": "white",
-  "prompt": "Detailed image generation prompt...",
-  "negative_prompt": "text, bad quality, blurry"
-}"
+                "text": "You are an expert Creative Director. Analyze the user's request.\n\nUser selected format: {{#start.format_type#}}\nUser selected CTA style: {{#start.cta_style#}}\n\nExtract:\n1. Product Name\n2. Target Audience\n3. Visual Style\n4. Platform (use: instagram_square, instagram_story, instagram_reels, tiktok, facebook_feed, twitter, youtube_shorts)\n5. Number of variations (default: 3)\n\nOutput ONLY valid JSON:\n{\n  \"product\": \"...\",\n  \"audience\": \"...\",\n  \"style\": \"...\",\n  \"platform\": \"instagram_square\",\n  \"num_variations\": 3,\n  \"text_color\": \"white\",\n  \"prompt\": \"Detailed image generation prompt...\",\n  \"negative_prompt\": \"text, bad quality, blurry\",\n  \"safe_zone\": \"auto\"\n}"
               },
               {
                 "role": "user",
@@ -83,17 +96,7 @@ Output ONLY valid JSON:
             "prompt_template": [
               {
                 "role": "system",
-                "text": "Generate ad copy variations based on this brief.
-
-Brief: {{#analyze_brief.text#}}
-
-Output ONLY valid JSON array of objects:
-[
-  {"hook": "Punchy Hook 1", "body": "Short body text", "cta": "Shop Now"},
-  {"hook": "Punchy Hook 2", "body": "Short body text", "cta": "Learn More"}
-]
-
-Make sure to generate exactly the number of variations requested in the brief."
+                "text": "Generate ad copy variations based on this brief.\n\nBrief: {{#analyze_brief.text#}}\n\nOutput ONLY valid JSON array:\n[\n  {\"hook\": \"Punchy Hook 1\", \"body\": \"Short body text\", \"cta\": \"Shop Now\"},\n  {\"hook\": \"Punchy Hook 2\", \"body\": \"Short body text\", \"cta\": \"Learn More\"}\n]\n\nGenerate exactly the number of variations requested."
               }
             ]
           }
@@ -105,20 +108,15 @@ Make sure to generate exactly the number of variations requested in the brief."
           "data": {
             "title": "Generate Base Image",
             "method": "post",
-            "url": "http://185.241.151.190:8000/api/v1/tools/generate-image",
+            "url": "https://creo.yourads.io/tools/generate-image",
             "headers": "Content-Type: application/json",
             "body": {
               "type": "json",
-              "data": "{
-  "prompt": "{{#analyze_brief.json.prompt#}}",
-  "backend": "flux",
-  "size": "1024x1024",
-  "num_images": 1
-}"
+              "data": "{\n  \"prompt\": \"{{#analyze_brief.json.prompt#}}\",\n  \"backend\": \"flux\",\n  \"size\": \"1024x1024\",\n  \"num_images\": 1\n}"
             },
             "timeout": {
               "connect": 10,
-              "read": 60,
+              "read": 120,
               "write": 10
             }
           }
@@ -130,18 +128,15 @@ Make sure to generate exactly the number of variations requested in the brief."
           "data": {
             "title": "Batch Compose",
             "method": "post",
-            "url": "http://185.241.151.190:8000/api/v1/tools/compose-batch",
+            "url": "https://creo.yourads.io/tools/compose-batch",
             "headers": "Content-Type: application/json",
-            "params": "image_url: {{#generate_image_http.body.images[0].url#}}
-variations_json: {{#generate_copy.text#}}
-output_size: {{#analyze_brief.json.platform#}}
-text_color: {{#analyze_brief.json.text_color#}}",
+            "params": "image_url={{#generate_image_http.body.images[0].url#}}&variations_json={{#generate_copy.text#}}&output_size={{#analyze_brief.json.platform#}}&text_color={{#analyze_brief.json.text_color#}}&format_type={{#start.format_type#}}&cta_style={{#start.cta_style#}}&right_bg_color={{#start.right_bg_color#}}&safe_zone={{#analyze_brief.json.safe_zone#}}",
             "body": {
               "type": "none"
             },
             "timeout": {
               "connect": 10,
-              "read": 60,
+              "read": 120,
               "write": 10
             }
           }
@@ -162,26 +157,11 @@ text_color: {{#analyze_brief.json.text_color#}}",
         }
       ],
       "edges": [
-        {
-          "source": "start",
-          "target": "analyze_brief"
-        },
-        {
-          "source": "analyze_brief",
-          "target": "generate_copy"
-        },
-        {
-          "source": "generate_copy",
-          "target": "generate_image_http"
-        },
-        {
-          "source": "generate_image_http",
-          "target": "batch_compose_http"
-        },
-        {
-          "source": "batch_compose_http",
-          "target": "answer"
-        }
+        { "source": "start", "target": "analyze_brief" },
+        { "source": "analyze_brief", "target": "generate_copy" },
+        { "source": "generate_copy", "target": "generate_image_http" },
+        { "source": "generate_image_http", "target": "batch_compose_http" },
+        { "source": "batch_compose_http", "target": "answer" }
       ]
     }
   }
