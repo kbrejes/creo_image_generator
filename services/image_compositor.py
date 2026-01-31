@@ -562,7 +562,7 @@ class ImageCompositor:
                         if body_text:
                             body_font = self._find_font(body_font_name, current_body_size, text=body_text)
                             body_lines = self._wrap_text(body_text, body_font, max_text_width)
-                            text_blocks.append((body_lines, body_font))
+                            text_blocks.append(("body", body_lines, body_font))
                             for line in body_lines:
                                 bbox = body_font.getbbox(line)
                                 total_height += bbox[3] - bbox[1] + 12
@@ -571,12 +571,15 @@ class ImageCompositor:
                             cta_size = int(CTA_SIZE * current_body_size / BODY_SIZE)
                             cta_font = self._find_font(cta_font_name, max(cta_size, MIN_FONT_SIZE), text=cta_text)
                             cta_lines = self._wrap_text(cta_text.upper(), cta_font, max_text_width)
-                            text_blocks.append((cta_lines, cta_font))
+                            text_blocks.append(("cta", cta_lines, cta_font))
                             if body_text:
                                 total_height += 40
-                            for line in cta_lines:
-                                bbox = cta_font.getbbox(line)
-                                total_height += bbox[3] - bbox[1] + 12
+                            if cta_style == "button":
+                                total_height += cta_font.getbbox(cta_text)[3] + 50
+                            else:
+                                for line in cta_lines:
+                                    bbox = cta_font.getbbox(line)
+                                    total_height += bbox[3] - bbox[1] + 12
 
                         if total_height <= (max_bottom_y - min_body_y):
                             break
@@ -586,23 +589,36 @@ class ImageCompositor:
                     if y_offset < min_body_y:
                         y_offset = min_body_y
 
-                    for i, (lines, font) in enumerate(text_blocks):
-                        for line in lines:
-                            text_width = self._measure_text_mixed(line, font)
-                            bbox = font.getbbox(line)
-                            x = (width - text_width) // 2
+                    # Determine button color
+                    if cta_button_color == "auto":
+                        btn_color = self._extract_dominant_color(img)
+                    else:
+                        btn_color = cta_button_color
 
-                            self._draw_text_with_outline_mixed(
-                                img,
-                                draw,
-                                (x, y_offset),
-                                line,
-                                font,
-                                fill=text_color,
-                                outline=outline_color,
-                                outline_width=outline_width,
+                    for i, (block_type, lines, font) in enumerate(text_blocks):
+                        if block_type == "cta" and cta_style == "button":
+                            # Draw CTA as button
+                            y_offset = self._draw_cta_button(
+                                img, draw, lines[0], width // 2, y_offset,
+                                font, button_color=btn_color, text_color="white"
                             )
-                            y_offset += bbox[3] - bbox[1] + 12
+                        else:
+                            for line in lines:
+                                text_width = self._measure_text_mixed(line, font)
+                                bbox = font.getbbox(line)
+                                x = (width - text_width) // 2
+
+                                self._draw_text_with_outline_mixed(
+                                    img,
+                                    draw,
+                                    (x, y_offset),
+                                    line,
+                                    font,
+                                    fill=text_color,
+                                    outline=outline_color,
+                                    outline_width=outline_width,
+                                )
+                                y_offset += bbox[3] - bbox[1] + 12
                         if i < len(text_blocks) - 1:
                             y_offset += 40
 
