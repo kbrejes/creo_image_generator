@@ -468,10 +468,10 @@ class ImageCompositor:
             bottom_zone_height = int(height * 0.40) - bottom_margin
             bottom_zone_start = int(height * 0.60)
 
-            # Font sizes - hierarchy: hook dominant, body readable, CTA clear
-            HOOK_SIZE = 76
-            BODY_SIZE = 40
-            CTA_SIZE = 50
+            # Font sizes - uniform, body/CTA 10% smaller than hook
+            HOOK_SIZE = 72
+            BODY_SIZE = 65  # ~10% smaller
+            CTA_SIZE = 65   # ~10% smaller
             MIN_FONT_SIZE = 28
 
             # Font selection: bold for hook (if enabled), regular for body/CTA
