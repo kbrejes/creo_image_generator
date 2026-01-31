@@ -468,10 +468,10 @@ class ImageCompositor:
             bottom_zone_height = int(height * 0.40) - bottom_margin
             bottom_zone_start = int(height * 0.60)
 
-            # Font sizes - uniform, body/CTA 10% smaller than hook
-            HOOK_SIZE = 72
-            BODY_SIZE = 65  # ~10% smaller
-            CTA_SIZE = 65   # ~10% smaller
+            # Font sizes - all same size (bold hook will look slightly larger naturally)
+            HOOK_SIZE = 65
+            BODY_SIZE = 65
+            CTA_SIZE = 65
             MIN_FONT_SIZE = 28
 
             # Font selection: bold for hook (if enabled), regular for body/CTA
@@ -893,8 +893,8 @@ class ImageCompositor:
                 actual_text_color = text_color if text_color != "auto" else "white"
                 outline_color = "black" if actual_text_color == "white" else "white"
 
-            # Font sizes - uniform
-            HOOK_SIZE = 72
+            # Font sizes - all same
+            HOOK_SIZE = 65
             BODY_SIZE = 65
             CTA_SIZE = 65
             MIN_SIZE = 28
@@ -1022,8 +1022,8 @@ class ImageCompositor:
                 actual_text_color = text_color
                 outline_color = "black" if text_color == "white" else "white"
 
-            # Font sizes - uniform
-            HOOK_SIZE = 72
+            # Font sizes - all same
+            HOOK_SIZE = 65
             BODY_SIZE = 65
             CTA_SIZE = 65
 
