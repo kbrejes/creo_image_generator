@@ -32,3 +32,4 @@ python-dotenv>=1.0.0
 
 # Utilities
 aiofiles>=23.2.0
+pictex>=2.0.0
