@@ -797,18 +797,19 @@ class ImageCompositor:
             left_width = split_x + angle_offset + 20
             src_img = self._resize_and_crop(src_img, (left_width, height))
 
-            # Create a mask for the angled edge
-            mask = Image.new("L", target_size, 0)
+            # Create a mask for the angled edge (same size as src_img)
+            mask = Image.new("L", (left_width, height), 255)
             mask_draw = ImageDraw.Draw(mask)
 
-            # Draw polygon for left side with angled edge
+            # Draw the angled right edge by making it transparent
+            # Create a polygon for the part to make transparent (right side)
             polygon = [
-                (0, 0),  # Top-left
-                (split_x + angle_offset, 0),  # Top-right (angled)
-                (split_x - angle_offset, height),  # Bottom-right (angled)
-                (0, height),  # Bottom-left
+                (split_x + angle_offset, 0),  # Top of angle
+                (left_width, 0),  # Top-right
+                (left_width, height),  # Bottom-right
+                (split_x - angle_offset, height),  # Bottom of angle
             ]
-            mask_draw.polygon(polygon, fill=255)
+            mask_draw.polygon(polygon, fill=0)
 
             # Paste source image with mask
             canvas.paste(src_img, (0, 0), mask)
