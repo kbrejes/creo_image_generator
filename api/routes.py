@@ -274,6 +274,84 @@ async def api_compose_ad(
 
 
 @router.post(
+    "/tools/compose-format",
+    tags=["Compositing"],
+    summary="Compose ad with selectable format",
+    description="""Unified composition endpoint supporting 4 visual formats:
+    - text_only: White background with black text
+    - meme: AI/uploaded image with text overlay (default)
+    - stickers: White background with text and scattered sticker images
+    - split: 50/50 split with image on left, text on colored background on right
+    """,
+)
+async def api_compose_format(
+    format_type: str = "meme",
+    hook_text: str = "",
+    body_text: str = "",
+    cta_text: str = "",
+    image_url: str = "",
+    output_size: str = "instagram_square",
+    text_color: str = "white",
+    right_bg_color: str = "white",
+    divider_angle: int = 15,
+    sticker_urls: str = "",
+    cta_style: str = "text",
+    cta_button_color: str = "auto",
+    safe_zone: str = "auto",
+    bold_hook: str = "yes",
+):
+    """
+    Compose an ad image with the selected format type.
+
+    Format types:
+    - text_only: Clean white background with centered black text
+    - meme: Image (AI or uploaded) with text overlay
+    - stickers: White background with text and sticker images in corners
+    - split: 50/50 split screen with angled divider
+
+    CTA styles:
+    - text: Regular text (default)
+    - button: Rounded rectangle button
+
+    Safe zones:
+    - auto: Automatically detect based on output_size
+    - tiktok: Large bottom margin for TikTok UI
+    - instagram_reels: Instagram Reels margins
+    - instagram_story: Instagram Story margins
+    - none: Minimal padding only
+    """
+    import json
+
+    # Parse sticker URLs
+    sticker_list = []
+    if sticker_urls:
+        try:
+            sticker_list = json.loads(sticker_urls)
+        except json.JSONDecodeError:
+            sticker_list = [s.strip() for s in sticker_urls.split(",") if s.strip()]
+
+    use_bold_hook = not bold_hook or "yes" in bold_hook.lower()
+
+    compositor = ImageCompositor()
+    return await compositor.compose_format(
+        format_type=format_type,
+        hook_text=hook_text,
+        body_text=body_text,
+        cta_text=cta_text,
+        image_url=image_url,
+        output_size=output_size,
+        text_color=text_color,
+        right_bg_color=right_bg_color,
+        divider_angle=divider_angle,
+        sticker_urls=sticker_list,
+        cta_style=cta_style,
+        cta_button_color=cta_button_color,
+        safe_zone=safe_zone,
+        bold_hook=use_bold_hook,
+    )
+
+
+@router.post(
     "/tools/compose-batch",
     tags=["Compositing"],
     summary="Compose multiple ads from variations",
