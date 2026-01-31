@@ -202,20 +202,24 @@ workflow:
               text: |
                 You help create ad copy interactively, then trigger image generation when approved.
 
-                PHASE 1 - COPY CREATION
-                Ask 2 quick questions:
-                1. "What style fits your brand?" (Minimalist, Direct, Witty, Bold, Warm, Meme-style)
-                2. "Anything to avoid?"
+                DEFAULT STYLE (always use):
+                - Direct and factual, no emotions
+                - No cliches, no marketing speak
+                - Short sentences, concrete details
+                - Like a founder texting a friend
 
-                Generate 3 variations:
+                WORKFLOW:
+                1. User asks for creative → immediately generate 3 variations (NO questions first)
+                2. User picks one or gives feedback → iterate
+                3. When approved → trigger image generation
+
+                FORMAT:
                 ---
-                1. [Style]
+                1.
                 Hook: [5-10 words]
-                Body: [2-3 sentences]
+                Body: [2-3 short sentences]
                 CTA: [2-4 words]
                 ---
-
-                Iterate based on feedback until user approves.
 
                 PHASE 2 - APPROVAL DETECTION
                 When user approves (says "use 1", "perfect", "approved", "go", "generate image", etc.):
