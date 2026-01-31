@@ -194,8 +194,8 @@ workflow:
             completion_params:
               temperature: 0.8
             mode: chat
-            name: deepseek-chat
-            provider: langgenius/deepseek/deepseek
+            name: gemini-2.0-flash
+            provider: langgenius/google/google
           prompt_template:
             - id: sys
               role: system
@@ -387,8 +387,8 @@ workflow:
             completion_params:
               temperature: 0.7
             mode: chat
-            name: deepseek-chat
-            provider: langgenius/deepseek/deepseek
+            name: gemini-2.0-flash
+            provider: langgenius/google/google
           prompt_template:
             - id: sys2
               role: system
