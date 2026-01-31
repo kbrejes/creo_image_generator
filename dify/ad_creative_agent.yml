@@ -1,5 +1,5 @@
 app:
-  description: Auto-generates ad creatives using your self-hosted API
+  description: Auto-generates ad creatives using your self-hosted API with 4 visual formats
   icon: 🎨
   icon_background: '#FFEAD5'
   mode: workflow
@@ -30,6 +30,33 @@ workflow:
           required: true
           type: paragraph
           variable: query
+        - label: Visual Format
+          type: select
+          variable: format_type
+          default: meme
+          options:
+            - value: meme
+              label: Meme Style (text over image)
+            - value: text_only
+              label: Text Only (white background)
+            - value: stickers
+              label: Text + Stickers
+            - value: split
+              label: Split Screen (photo left, text right)
+        - label: CTA Style
+          type: select
+          variable: cta_style
+          default: text
+          options:
+            - value: text
+              label: Text
+            - value: button
+              label: Button (rounded rectangle)
+        - label: Right Side Color (for split format)
+          type: text-input
+          variable: right_bg_color
+          default: white
+          required: false
       id: start
       position:
         x: 80
@@ -48,6 +75,9 @@ workflow:
           text: |
             You are an expert Creative Director. Analyze the user's request.
 
+            User selected format: {{#start.format_type#}}
+            User selected CTA style: {{#start.cta_style#}}
+
             Extract:
             1. Product Name
             2. Target Audience
@@ -55,14 +85,19 @@ workflow:
             4. Platform (Instagram, LinkedIn, etc.)
             5. Number of variations requested (default to 3)
 
+            For platform, use one of: instagram_square, instagram_story, instagram_reels, tiktok, facebook_feed, twitter, youtube_shorts
+
             Output ONLY valid JSON:
             {
               "platform": "instagram_square",
               "num_variations": 3,
               "text_color": "white",
               "prompt": "Detailed image generation prompt...",
-              "negative_prompt": "text, bad quality, blurry"
+              "negative_prompt": "text, bad quality, blurry",
+              "safe_zone": "auto"
             }
+
+            Note: For text_only or stickers format, the prompt is still useful for sticker selection theme.
         - role: user
           text: '{{#start.query#}}'
         title: Analyze Brief
@@ -116,10 +151,10 @@ workflow:
         method: post
         timeout:
           connect: 10
-          read: 60
+          read: 120
           write: 10
         title: Generate Image
-        url: http://185.241.151.190:8000/api/v1/tools/generate-image
+        url: https://creo.yourads.io/tools/generate-image
         variables: []
       id: generate_image
       position:
@@ -146,12 +181,20 @@ workflow:
           value: '{{#analyze_brief.json.platform#}}'
         - key: text_color
           value: '{{#analyze_brief.json.text_color#}}'
+        - key: format_type
+          value: '{{#start.format_type#}}'
+        - key: cta_style
+          value: '{{#start.cta_style#}}'
+        - key: right_bg_color
+          value: '{{#start.right_bg_color#}}'
+        - key: safe_zone
+          value: '{{#analyze_brief.json.safe_zone#}}'
         timeout:
           connect: 10
-          read: 60
+          read: 120
           write: 10
         title: Batch Compose
-        url: http://185.241.151.190:8000/api/v1/tools/compose-batch
+        url: https://creo.yourads.io/tools/compose-batch
         variables: []
       id: batch_compose
       position:
