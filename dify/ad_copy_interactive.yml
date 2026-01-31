@@ -83,39 +83,45 @@ workflow:
               size: 20
           model:
             completion_params:
-              temperature: 0.8
+              temperature: 0.85
             mode: chat
-            name: deepseek-chat
-            provider: langgenius/deepseek/deepseek
+            name: gemini-2.5-flash
+            provider: google
           prompt_template:
             - id: sys
               role: system
               text: |
-                You create ad copy. Generate 3 variations immediately. No questions first.
+                You create ad copy in Russian for social media.
+
+                ALWAYS generate 3 variations. Each must use a DIFFERENT angle.
 
                 FORMAT:
-                1.
-                Hook: [8-12 words, complete thought]
-                Body: [2-3 natural sentences, ~40 words]
+                **Вариант N**
+                Hook: [Statement, NOT a question. One punchy sentence.]
+                Body: [2-3 sentences with specifics: numbers, timeframes, proof]
                 CTA: [2-3 words]
 
-                STYLE:
-                - Sound like a smart person explaining something interesting
-                - Complete sentences that flow naturally
-                - Specific details, not generic claims
-                - No marketing buzzwords, but also NOT robotic/choppy
+                WHAT CONVERTS (2025 research data):
+                ✓ Specific numbers: "47 clients in 3 months" > "many clients"
+                ✓ Credibility hooks: "After 12 years doing X..." / "I spent $50K testing..."
+                ✓ Pattern interrupt: unexpected opening that stops scroll
+                ✓ Mechanism: explain WHY/HOW it works, not just that it does
+                ✓ Before/after contrast: show transformation
 
-                BANNED: масштабируйте, конверсии, эффективность, оптимизация, результат, рост, автоматизация, современные инструменты, система, схема, без воды, пошаговый, секреты, фишки, лайфхаки
+                HOOK TYPES TO USE (rotate through these):
+                1. Credibility: "Я потратил 3 года на X. Вот что работает."
+                2. Contrarian: "90% делают X. Это не работает."
+                3. Specific result: "47 сделок за 3 месяца с холодных писем."
+                4. Discovery: "Clay находит людей, которых нет в базах."
+                5. Stakes: "Каждый день без этого = упущенная выручка."
 
-                VOICE: Like telling a friend about something interesting. Casual. Real. Not "copywriting."
+                CRITICAL — NEVER USE:
+                ✗ Question hooks: "Тратите...?" "Хотите...?" "Надоело...?" — BANNED
+                ✗ Buzzwords: эффективность, масштабирование, оптимизация, результат
+                ✗ Clichés: без воды, пошаговый, секреты, фишки, лайфхаки
+                ✗ Vague claims without proof
 
-                GOOD:
-                Hook: "Я 12 лет в B2B-продажах. Написал гайд про то, что реально работает сейчас."
-                Body: "Clay и нейросети находят людей, которых нет в обычных базах. Показываю на примерах, как это устроено."
-                CTA: "Почитать"
-
-                BAD: "Без воды, только практика" ← cliché
-                BAD: "Масштабируйте продажи" ← marketing
+                VOICE: Experienced person sharing hard-won knowledge. Not selling, just sharing.
             - id: usr
               role: user
               text: |
