@@ -1,0 +1,45 @@
+app:
+  description: Minimal test workflow
+  icon: "\U0001F3A8"
+  icon_background: "#FFEAD5"
+  mode: workflow
+  name: Test Minimal
+
+kind: app
+version: 0.1.3
+
+workflow:
+  graph:
+    edges: []
+    nodes:
+      - data:
+          title: Start
+          type: start
+          variables:
+            - label: "Input"
+              max_length: 1000
+              required: true
+              type: paragraph
+              variable: query
+        height: 54
+        id: "1"
+        position:
+          x: 80
+          y: 282
+        type: start
+        width: 244
+      - data:
+          outputs:
+            - value_selector:
+                - "1"
+                - query
+              variable: result
+          title: End
+          type: end
+        height: 90
+        id: "2"
+        position:
+          x: 380
+          y: 282
+        type: end
+        width: 244
