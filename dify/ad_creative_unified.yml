@@ -230,27 +230,29 @@ workflow:
                 - Specific details from the content
                 - No marketing buzzwords, but also not robotic
 
-                BANNED WORDS:
+                BANNED WORDS/PHRASES:
                 - масштабируйте, конверсии, эффективность, оптимизация
                 - результат, рост, растут, вырастет
                 - автоматизация, современные инструменты, система, схема
+                - без воды, пошаговый, секреты, фишки, лайфхаки
+                - "как я/мы делаем X" (overused structure)
 
-                GOOD EXAMPLES:
-                Hook: "Как я нахожу ЛПР, которых нет в LinkedIn и Apollo"
-                Body: "Нейросеть ищет упоминания в статьях и новостях. Потом находит email через Clay. Показываю конкретные примеры со скриншотами."
-                CTA: "Читать гайд"
+                VOICE: Like you're telling a friend about something interesting you made. Casual. Real. Not "copywriting."
 
-                Hook: "Написал гайд про B2B-лидген. 7 минут, без воды."
-                Body: "Объясняю, как один человек с таблицей и нейросетью делает работу отдела. Реальные кейсы из моей практики в США, EU и РФ."
-                CTA: "Открыть"
+                GOOD EXAMPLES (sound like real speech):
+                Hook: "Я 12 лет в B2B-продажах. Написал гайд про то, что реально работает сейчас."
+                Body: "Clay и нейросети находят людей, которых нет в обычных базах. Показываю на примерах, как это устроено."
+                CTA: "Почитать"
 
-                BAD (too choppy):
-                - "Гайд. Холодные продажи. Без воды." ← robotic
-                - "Таблица. Нейросеть. Письма." ← too compressed
+                Hook: "Холодные письма, на которые отвечают. Серьёзно."
+                Body: "Дело не в количестве, а в том, кому писать и что. В гайде — конкретные примеры из моих проектов в США и Европе."
+                CTA: "Открыть гайд"
 
-                BAD (marketing speak):
-                - "Масштабируйте продажи" ← buzzword
-                - "Эффективный подход к лидгену" ← generic
+                BAD (copywriter voice):
+                - "Без воды, только практика" ← cliché
+                - "Как я нахожу ЛПР" ← overused structure
+                - "Масштабируйте продажи" ← marketing speak
+                - "Гайд. Холодные продажи." ← robotic
             - id: usr
               role: user
               text: |
