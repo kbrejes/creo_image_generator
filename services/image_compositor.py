@@ -1088,6 +1088,8 @@ class ImageCompositor:
         - split: 50/50 split with image left, text right
         """
         if format_type == "text_only":
+            # For text_only, "auto" defaults to orange since there's no image
+            btn_color = "#FF5722" if cta_button_color == "auto" else cta_button_color
             return await self.compose(
                 image_source="white",
                 hook_text=hook_text,
@@ -1098,7 +1100,7 @@ class ImageCompositor:
                 outline_color="white",
                 bold_hook=bold_hook,
                 cta_style=cta_style,
-                cta_button_color=cta_button_color,
+                cta_button_color=btn_color,
                 safe_zone=safe_zone,
             )
 
@@ -1118,6 +1120,8 @@ class ImageCompositor:
             )
 
         elif format_type == "stickers":
+            # For stickers, "auto" defaults to orange since there's no image to extract from
+            btn_color = "#FF5722" if cta_button_color == "auto" else cta_button_color
             return await self.compose_with_stickers(
                 hook_text=hook_text,
                 body_text=body_text,
@@ -1127,7 +1131,7 @@ class ImageCompositor:
                 bg_color="white",
                 text_color="black",
                 cta_style=cta_style,
-                cta_button_color=cta_button_color,
+                cta_button_color=btn_color,
                 safe_zone=safe_zone,
             )
 
