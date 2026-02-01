@@ -1,0 +1,738 @@
+app:
+  description: Complete ad creative pipeline - copy refinement, approval, and 3-format image generation
+  icon: "\U0001F3AF"
+  icon_background: "#4CAF50"
+  mode: advanced-chat
+  name: Ad Creative Master
+  use_icon_as_answer_icon: false
+
+kind: app
+version: 0.1.3
+
+workflow:
+  conversation_variables: []
+  environment_variables: []
+  features:
+    file_upload:
+      enabled: false
+      image:
+        enabled: false
+    opening_statement: |
+      I'll create ad creatives for you in 3 formats (Story, Square, Horizontal).
+
+      **Step 1:** Paste your content (website copy, product info, or description)
+      **Step 2:** I'll generate copy - refine until perfect
+      **Step 3:** Say "ok" or "use 1" to generate images
+
+      Let's start! Paste your content below.
+    retriever_resource:
+      enabled: false
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    suggested_questions: []
+    suggested_questions_after_answer:
+      enabled: false
+    text_to_speech:
+      enabled: false
+  graph:
+    edges:
+      # Start -> LLM Copy Generator
+      - data:
+          isInIteration: false
+          sourceType: start
+          targetType: llm
+        id: e1
+        source: "1"
+        sourceHandle: source
+        target: "2"
+        targetHandle: target
+        type: custom
+      # LLM -> Parse Approval
+      - data:
+          isInIteration: false
+          sourceType: llm
+          targetType: code
+        id: e2
+        source: "2"
+        sourceHandle: source
+        target: "3"
+        targetHandle: target
+        type: custom
+      # Parse -> If-Else
+      - data:
+          isInIteration: false
+          sourceType: code
+          targetType: if-else
+        id: e3
+        source: "3"
+        sourceHandle: source
+        target: "4"
+        targetHandle: target
+        type: custom
+      # If-Else FALSE -> Copy Response (continue conversation)
+      - data:
+          isInIteration: false
+          sourceType: if-else
+          targetType: answer
+        id: e4a
+        source: "4"
+        sourceHandle: "false"
+        target: "9"
+        targetHandle: target
+        type: custom
+      # If-Else TRUE -> Build Prompt
+      - data:
+          isInIteration: false
+          sourceType: if-else
+          targetType: llm
+        id: e4b
+        source: "4"
+        sourceHandle: "true"
+        target: "5"
+        targetHandle: target
+        type: custom
+      # Build Prompt -> Generate Image
+      - data:
+          isInIteration: false
+          sourceType: llm
+          targetType: http-request
+        id: e5
+        source: "5"
+        sourceHandle: source
+        target: "6"
+        targetHandle: target
+        type: custom
+      # Generate Image -> Parse Image
+      - data:
+          isInIteration: false
+          sourceType: http-request
+          targetType: code
+        id: e6
+        source: "6"
+        sourceHandle: source
+        target: "7"
+        targetHandle: target
+        type: custom
+      # Parse Image -> Compose Story
+      - data:
+          isInIteration: false
+          sourceType: code
+          targetType: http-request
+        id: e7
+        source: "7"
+        sourceHandle: source
+        target: "10"
+        targetHandle: target
+        type: custom
+      # Compose Story -> Compose Square
+      - data:
+          isInIteration: false
+          sourceType: http-request
+          targetType: http-request
+        id: e10
+        source: "10"
+        sourceHandle: source
+        target: "11"
+        targetHandle: target
+        type: custom
+      # Compose Square -> Compose Horizontal
+      - data:
+          isInIteration: false
+          sourceType: http-request
+          targetType: http-request
+        id: e11
+        source: "11"
+        sourceHandle: source
+        target: "12"
+        targetHandle: target
+        type: custom
+      # Compose Horizontal -> Collect URLs
+      - data:
+          isInIteration: false
+          sourceType: http-request
+          targetType: code
+        id: e12
+        source: "12"
+        sourceHandle: source
+        target: "13"
+        targetHandle: target
+        type: custom
+      # Collect URLs -> Final Answer
+      - data:
+          isInIteration: false
+          sourceType: code
+          targetType: answer
+        id: e13
+        source: "13"
+        sourceHandle: source
+        target: "14"
+        targetHandle: target
+        type: custom
+    nodes:
+      # === NODE 1: START ===
+      - data:
+          desc: "Content input and design settings"
+          selected: false
+          title: Start
+          type: start
+          variables:
+            - label: "Content (paste text or describe your product)"
+              max_length: 100000
+              required: false
+              type: paragraph
+              variable: content
+            - label: "Design Style"
+              required: false
+              type: select
+              variable: design_preset
+              options:
+                - "neon"
+                - "minimal"
+                - "gradient"
+                - "bold"
+                - "glass"
+        height: 54
+        id: "1"
+        position:
+          x: 30
+          y: 300
+        type: custom
+        width: 244
+
+      # === NODE 2: COPY GENERATOR LLM ===
+      - data:
+          context:
+            enabled: false
+            variable_selector: []
+          desc: Generate copy with approval detection
+          memory:
+            query_prompt_template: ""
+            window:
+              enabled: true
+              size: 20
+          model:
+            completion_params:
+              temperature: 0.85
+            mode: chat
+            name: gemini-2.0-flash
+            provider: google
+          prompt_template:
+            - id: sys
+              role: system
+              text: |
+                You create ad copy in Russian for social media.
+
+                ALWAYS generate 3 variations. Each must use a DIFFERENT angle.
+
+                FORMAT:
+                **Вариант 1**
+                Hook: [Statement, NOT a question. One punchy sentence.]
+                Body: [2-3 sentences with specifics]
+                CTA: [2-3 words]
+
+                **Вариант 2** ...etc
+
+                WHAT CONVERTS:
+                ✓ Specific numbers: "47 clients in 3 months"
+                ✓ Credibility hooks: "After 12 years..."
+                ✓ Pattern interrupt: unexpected opening
+                ✓ Before/after contrast
+
+                HOOK TYPES (rotate through):
+                1. Credibility: "Я потратил 3 года на X. Вот что работает."
+                2. Contrarian: "90% делают X. Это не работает."
+                3. Specific result: "47 сделок за 3 месяца."
+                4. Discovery: "Инструмент находит людей, которых нет в базах."
+
+                NEVER USE:
+                ✗ Question hooks: "Хотите...?" — BANNED
+                ✗ Buzzwords: эффективность, масштабирование
+                ✗ Clichés: без воды, пошаговый, секреты
+
+                ---
+
+                WHEN USER APPROVES (says "ok", "да", "use 1", "go", "perfect", "use variation 2", etc.):
+
+                Extract which variation they want (default to 1 if unclear).
+
+                Then output EXACTLY this format:
+                ---
+                APPROVED_COPY_START
+                hook: [the chosen hook text]
+                body: [the chosen body text]
+                cta: [the chosen cta text]
+                APPROVED_COPY_END
+                ---
+
+                Then say: "Generating images in 3 formats..."
+            - id: usr
+              role: user
+              text: |
+                {{#1.content#}}
+
+                {{#sys.query#}}
+          selected: false
+          title: Copy Generator
+          type: llm
+          variables:
+            - value_selector:
+                - "1"
+                - content
+              variable: content
+            - value_selector:
+                - sys
+                - query
+              variable: query
+          vision:
+            enabled: false
+        height: 98
+        id: "2"
+        position:
+          x: 334
+          y: 300
+        type: custom
+        width: 244
+
+      # === NODE 3: PARSE APPROVAL ===
+      - data:
+          code: |
+            import re
+
+            def main(llm_output: str) -> dict:
+                # Check if copy was approved
+                if "APPROVED_COPY_START" in llm_output and "APPROVED_COPY_END" in llm_output:
+                    pattern = r"APPROVED_COPY_START\s*\n(.*?)\nAPPROVED_COPY_END"
+                    match = re.search(pattern, llm_output, re.DOTALL)
+
+                    if match:
+                        content = match.group(1)
+
+                        hook_match = re.search(r"hook:\s*(.+?)(?:\n|$)", content, re.IGNORECASE)
+                        body_match = re.search(r"body:\s*(.+?)(?:\n|$)", content, re.IGNORECASE)
+                        cta_match = re.search(r"cta:\s*(.+?)(?:\n|$)", content, re.IGNORECASE)
+
+                        hook = hook_match.group(1).strip() if hook_match else ""
+                        body = body_match.group(1).strip() if body_match else ""
+                        cta = cta_match.group(1).strip() if cta_match else ""
+
+                        display_text = re.sub(r"---\s*\nAPPROVED_COPY_START.*?APPROVED_COPY_END\s*\n---", "", llm_output, flags=re.DOTALL).strip()
+
+                        return {
+                            "is_approved": True,
+                            "hook": hook,
+                            "body": body,
+                            "cta": cta,
+                            "display_text": display_text if display_text else "Generating your ad images..."
+                        }
+
+                return {
+                    "is_approved": False,
+                    "hook": "",
+                    "body": "",
+                    "cta": "",
+                    "display_text": llm_output
+                }
+          code_language: python3
+          desc: Detect approval and extract copy
+          outputs:
+            is_approved:
+              type: boolean
+            hook:
+              type: string
+            body:
+              type: string
+            cta:
+              type: string
+            display_text:
+              type: string
+          selected: false
+          title: Parse Approval
+          type: code
+          variables:
+            - value_selector:
+                - "2"
+                - text
+              variable: llm_output
+        height: 98
+        id: "3"
+        position:
+          x: 638
+          y: 300
+        type: custom
+        width: 244
+
+      # === NODE 4: IF-ELSE (APPROVED?) ===
+      - data:
+          conditions:
+            - comparison_operator: is
+              id: cond1
+              value: "true"
+              variable_selector:
+                - "3"
+                - is_approved
+          desc: Check if copy approved
+          logical_operator: and
+          selected: false
+          title: Is Approved?
+          type: if-else
+        height: 98
+        id: "4"
+        position:
+          x: 942
+          y: 300
+        type: custom
+        width: 244
+
+      # === NODE 5: BUILD IMAGE PROMPT ===
+      - data:
+          context:
+            enabled: false
+            variable_selector: []
+          desc: Build image prompt from approved hook
+          memory:
+            query_prompt_template: ""
+            window:
+              enabled: false
+              size: 10
+          model:
+            completion_params:
+              temperature: 0.7
+            mode: chat
+            name: gemini-2.0-flash
+            provider: google
+          prompt_template:
+            - id: sys2
+              role: system
+              text: |
+                Create a Flux AI image prompt for an ad background.
+
+                Rules:
+                1. Feature a PERSON with expressive reaction (shocked, excited, pointing)
+                2. Simple clean solid color background
+                3. Bright eye-catching lighting
+                4. Photo-realistic style
+                5. Under 50 words
+                6. NO text in the image
+
+                Output ONLY the image description.
+            - id: usr2
+              role: user
+              text: "Create image for ad with hook: {{#3.hook#}}"
+          selected: false
+          title: Build Image Prompt
+          type: llm
+          variables:
+            - value_selector:
+                - "3"
+                - hook
+              variable: hook
+          vision:
+            enabled: false
+        height: 98
+        id: "5"
+        position:
+          x: 1246
+          y: 200
+        type: custom
+        width: 244
+
+      # === NODE 6: GENERATE IMAGE ===
+      - data:
+          authorization:
+            config: null
+            type: no-auth
+          body:
+            data: '{"prompt": "{{#5.text#}}, no text, no words, no letters", "backend": "flux", "size": "1024x1024", "negative_prompt": "text, words, letters, writing, watermark"}'
+            type: json
+          desc: Generate base image with Flux
+          headers: "Content-Type:application/json"
+          method: post
+          params: ""
+          timeout:
+            connect: 60
+            max_connect_timeout: 60
+            max_read_timeout: 180
+            max_write_timeout: 180
+            read: 180
+            write: 180
+          title: Generate Image
+          type: http-request
+          url: https://creo.yourads.io/tools/generate-image
+          variables: []
+        height: 98
+        id: "6"
+        position:
+          x: 1550
+          y: 200
+        type: custom
+        width: 244
+
+      # === NODE 7: PARSE IMAGE URL ===
+      - data:
+          code: |
+            import json
+
+            def main(body: str) -> dict:
+                try:
+                    data = json.loads(body)
+                    if data.get("success") and data.get("images"):
+                        url = data["images"][0]["url"]
+                        url = url.replace("http://185.241.151.190:8000", "https://creo.yourads.io")
+                        return {"image_url": url}
+                    return {"image_url": ""}
+                except:
+                    return {"image_url": ""}
+          code_language: python3
+          desc: Extract image URL
+          outputs:
+            image_url:
+              type: string
+          selected: false
+          title: Parse Image
+          type: code
+          variables:
+            - value_selector:
+                - "6"
+                - body
+              variable: body
+        height: 98
+        id: "7"
+        position:
+          x: 1854
+          y: 200
+        type: custom
+        width: 244
+
+      # === NODE 9: COPY RESPONSE (not approved yet) ===
+      - data:
+          answer: "{{#3.display_text#}}"
+          desc: "Show copy for review"
+          selected: false
+          title: Copy Response
+          type: answer
+          variables: []
+        height: 107
+        id: "9"
+        position:
+          x: 1246
+          y: 450
+        type: custom
+        width: 244
+
+      # === NODE 10: COMPOSE STORY (1080x1920) ===
+      - data:
+          authorization:
+            config: null
+            type: no-auth
+          body:
+            data: ""
+            type: none
+          desc: Instagram Story format
+          headers: ""
+          method: post
+          params: "hook_text:{{#3.hook#}}\nbody_text:{{#3.body#}}\ncta_text:{{#3.cta#}}\npreset:{{#1.design_preset#}}\noutput_size:instagram_story\nbackground_image_url:{{#7.image_url#}}"
+          timeout:
+            connect: 60
+            max_connect_timeout: 60
+            max_read_timeout: 120
+            max_write_timeout: 120
+            read: 120
+            write: 120
+          title: Story (1080x1920)
+          type: http-request
+          url: https://creo.yourads.io/tools/compose-modern
+          variables: []
+        height: 98
+        id: "10"
+        position:
+          x: 2158
+          y: 200
+        type: custom
+        width: 244
+
+      # === NODE 11: COMPOSE SQUARE (1080x1080) ===
+      - data:
+          authorization:
+            config: null
+            type: no-auth
+          body:
+            data: ""
+            type: none
+          desc: Instagram Feed format
+          headers: ""
+          method: post
+          params: "hook_text:{{#3.hook#}}\nbody_text:{{#3.body#}}\ncta_text:{{#3.cta#}}\npreset:{{#1.design_preset#}}\noutput_size:instagram_square\nbackground_image_url:{{#7.image_url#}}"
+          timeout:
+            connect: 60
+            max_connect_timeout: 60
+            max_read_timeout: 120
+            max_write_timeout: 120
+            read: 120
+            write: 120
+          title: Square (1080x1080)
+          type: http-request
+          url: https://creo.yourads.io/tools/compose-modern
+          variables: []
+        height: 98
+        id: "11"
+        position:
+          x: 2462
+          y: 200
+        type: custom
+        width: 244
+
+      # === NODE 12: COMPOSE HORIZONTAL (1280x720) ===
+      - data:
+          authorization:
+            config: null
+            type: no-auth
+          body:
+            data: ""
+            type: none
+          desc: YouTube/Telegram horizontal format
+          headers: ""
+          method: post
+          params: "hook_text:{{#3.hook#}}\nbody_text:{{#3.body#}}\ncta_text:{{#3.cta#}}\npreset:{{#1.design_preset#}}\noutput_size:telegram\nbackground_image_url:{{#7.image_url#}}"
+          timeout:
+            connect: 60
+            max_connect_timeout: 60
+            max_read_timeout: 120
+            max_write_timeout: 120
+            read: 120
+            write: 120
+          title: Horizontal (1280x720)
+          type: http-request
+          url: https://creo.yourads.io/tools/compose-modern
+          variables: []
+        height: 98
+        id: "12"
+        position:
+          x: 2766
+          y: 200
+        type: custom
+        width: 244
+
+      # === NODE 13: COLLECT ALL URLs ===
+      - data:
+          code: |
+            import json
+
+            def main(story_body: str, square_body: str, horizontal_body: str, raw_image: str, hook: str, body_text: str, cta: str) -> dict:
+                def extract_url(body):
+                    try:
+                        data = json.loads(body)
+                        if data.get("success"):
+                            return data.get("url", "")
+                    except:
+                        pass
+                    return ""
+
+                return {
+                    "story_url": extract_url(story_body),
+                    "square_url": extract_url(square_body),
+                    "horizontal_url": extract_url(horizontal_body),
+                    "raw_image_url": raw_image,
+                    "hook": hook,
+                    "body": body_text,
+                    "cta": cta
+                }
+          code_language: python3
+          desc: Collect all format URLs
+          outputs:
+            story_url:
+              type: string
+            square_url:
+              type: string
+            horizontal_url:
+              type: string
+            raw_image_url:
+              type: string
+            hook:
+              type: string
+            body:
+              type: string
+            cta:
+              type: string
+          selected: false
+          title: Collect URLs
+          type: code
+          variables:
+            - value_selector:
+                - "10"
+                - body
+              variable: story_body
+            - value_selector:
+                - "11"
+                - body
+              variable: square_body
+            - value_selector:
+                - "12"
+                - body
+              variable: horizontal_body
+            - value_selector:
+                - "7"
+                - image_url
+              variable: raw_image
+            - value_selector:
+                - "3"
+                - hook
+              variable: hook
+            - value_selector:
+                - "3"
+                - body
+              variable: body_text
+            - value_selector:
+                - "3"
+                - cta
+              variable: cta
+        height: 98
+        id: "13"
+        position:
+          x: 3070
+          y: 200
+        type: custom
+        width: 244
+
+      # === NODE 14: FINAL ANSWER ===
+      - data:
+          answer: |
+            ## Your Ad Creatives (3 Formats)
+
+            **Instagram Story (1080x1920):**
+            {{#13.story_url#}}
+
+            **Instagram Feed (1080x1080):**
+            {{#13.square_url#}}
+
+            **Horizontal (1280x720):**
+            {{#13.horizontal_url#}}
+
+            ---
+
+            **Raw Image (no text):**
+            {{#13.raw_image_url#}}
+
+            ---
+
+            **Approved Copy:**
+            - Hook: {{#13.hook#}}
+            - Body: {{#13.body#}}
+            - CTA: {{#13.cta#}}
+          desc: "Show all 3 formats"
+          selected: false
+          title: Final Output
+          type: answer
+          variables: []
+        height: 107
+        id: "14"
+        position:
+          x: 3374
+          y: 200
+        type: custom
+        width: 244
+    viewport:
+      x: 0
+      y: 0
+      zoom: 0.3

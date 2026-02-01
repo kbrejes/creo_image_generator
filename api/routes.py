@@ -21,7 +21,15 @@ from tools.image_gen import generate_image, compare_backends
 from tools.reference import analyze_reference, search_references
 from tools.video_gen import generate_video
 from services.image_compositor import ImageCompositor
-from services.modern_compositor import ModernCompositor, DesignPreset
+from services.modern_compositor import (
+    ModernCompositor,
+    DesignPreset,
+    TextPosition,
+    get_available_fonts,
+    get_available_sizes,
+    get_safe_zones,
+    FONTS,
+)
 
 router = APIRouter()
 
@@ -455,15 +463,26 @@ async def api_compose_batch(
     summary="Compose ad with modern text effects",
     description="""Create professional ad creatives with modern text effects using pictex.
 
-Presets:
+**Presets:**
 - neon: Glowing neon text on dark background
 - minimal: Clean white background with subtle shadows
 - gradient: Gradient background with shadowed text
 - bold: High contrast with colored text stroke
 - glass: Glassmorphism style with semi-transparent CTA
 
-Output sizes: instagram_square, instagram_story, instagram_reels, instagram_portrait,
+**Output sizes:** instagram_square, instagram_story, instagram_reels, instagram_portrait,
 facebook_feed, telegram, tiktok, youtube_thumbnail
+
+**Fonts (20 with Cyrillic support):**
+montserrat, oswald, rubik, inter, raleway, pt_sans, roboto, open_sans, nunito, comfortaa,
+anton, russo_one, jost, manrope, bebas_neue, fira_sans, source_sans, ibm_plex, exo2, play
+
+**Text Position:**
+- center: Traditional centered layout (default)
+- top_heavy: Content weighted toward top
+- bottom_heavy: Content weighted toward bottom
+
+**Safe Zones:** Automatically applied based on output_size (Instagram Story: 250px top/bottom, etc.)
 """,
 )
 async def api_compose_modern(
@@ -473,6 +492,8 @@ async def api_compose_modern(
     preset: str = "neon",
     output_size: str = "instagram_square",
     background_image_url: str = "",
+    font_name: str = "inter",
+    text_position: str = "center",
 ):
     """
     Compose an ad with modern text effects.
@@ -484,7 +505,10 @@ async def api_compose_modern(
         preset: Design preset (neon, minimal, gradient, bold, glass)
         output_size: Output dimensions preset
         background_image_url: Optional background image URL (will darken and overlay text)
+        font_name: Font to use (default: inter). See /tools/fonts for full list.
+        text_position: Text positioning (center, top_heavy, bottom_heavy)
     """
+    import httpx
     from services.storage import get_storage_service
 
     try:
@@ -497,6 +521,16 @@ async def api_compose_modern(
                 "error": f"Invalid preset '{preset}'. Valid: neon, minimal, gradient, bold, glass",
             }
 
+        # Validate text position
+        try:
+            position = TextPosition(text_position.lower())
+        except ValueError:
+            position = TextPosition.CENTER
+
+        # Validate font name
+        if font_name not in FONTS:
+            font_name = "inter"  # Default fallback
+
         compositor = ModernCompositor()
 
         # Choose composition method based on background image
@@ -507,18 +541,27 @@ async def api_compose_modern(
             and background_image_url.startswith("http")
         )
 
-        print(f"[compose-modern] has_bg_image={has_bg_image}, url={background_image_url[:50] if background_image_url else 'None'}...")
-
         if has_bg_image:
-            print("[compose-modern] calling compose_with_image_overlay...")
+            # Pre-fetch image ASYNCHRONOUSLY to avoid blocking the event loop
+            download_url = background_image_url
+            if "creo.yourads.io" in background_image_url:
+                download_url = background_image_url.replace(
+                    "https://creo.yourads.io", "http://localhost:8000"
+                )
+            async with httpx.AsyncClient() as client:
+                response = await client.get(download_url, timeout=60, follow_redirects=True)
+                bg_image_bytes = response.content
+
             image_bytes = compositor.compose_with_image_overlay(
                 hook_text=hook_text,
                 body_text=body_text,
                 cta_text=cta_text,
-                background_image_url=background_image_url,
+                background_image_bytes=bg_image_bytes,
                 preset=design_preset,
                 output_size=output_size,
                 darken=0.5,
+                font_name=font_name,
+                text_position=position,
             )
         else:
             image_bytes = compositor.compose(
@@ -527,15 +570,13 @@ async def api_compose_modern(
                 cta_text=cta_text,
                 preset=design_preset,
                 output_size=output_size,
+                font_name=font_name,
+                text_position=position,
             )
-
-        print(f"[compose-modern] image generated, size={len(image_bytes)}")
 
         # Upload to storage
         storage = get_storage_service()
-        print("[compose-modern] saving to storage...")
         filename, url = await storage.save(image_bytes)
-        print(f"[compose-modern] saved: {filename}")
 
         return {
             "success": True,
@@ -543,6 +584,8 @@ async def api_compose_modern(
             "filename": filename,
             "preset": preset,
             "output_size": output_size,
+            "font": font_name,
+            "text_position": text_position,
         }
 
     except Exception as e:
@@ -606,3 +649,71 @@ async def get_openapi_for_dify():
 
     fix_schema(schema)
     return schema
+
+
+# ===================
+# Typography Info Endpoints
+# ===================
+
+
+@router.get(
+    "/tools/fonts",
+    tags=["Typography"],
+    summary="Get available fonts",
+    description="Returns all available fonts with Cyrillic support info.",
+)
+async def api_get_fonts():
+    """Get list of available fonts with metadata."""
+    fonts = get_available_fonts()
+    return {
+        "success": True,
+        "fonts": [
+            {
+                "id": font_id,
+                "name": info["name"],
+                "style": info["style"],
+                "cyrillic": info["cyrillic"],
+            }
+            for font_id, info in fonts.items()
+        ],
+        "count": len(fonts),
+    }
+
+
+@router.get(
+    "/tools/sizes",
+    tags=["Typography"],
+    summary="Get available output sizes",
+    description="Returns all available output size presets with dimensions.",
+)
+async def api_get_sizes():
+    """Get list of available output sizes."""
+    sizes = get_available_sizes()
+    return {
+        "success": True,
+        "sizes": [
+            {
+                "id": size_id,
+                "width": dims[0],
+                "height": dims[1],
+                "aspect_ratio": f"{dims[0]}:{dims[1]}",
+            }
+            for size_id, dims in sizes.items()
+        ],
+        "count": len(sizes),
+    }
+
+
+@router.get(
+    "/tools/safe-zones",
+    tags=["Typography"],
+    summary="Get safe zones for all formats",
+    description="Returns safe zone margins (in pixels) for each output format.",
+)
+async def api_get_safe_zones():
+    """Get safe zone margins for all formats."""
+    zones = get_safe_zones()
+    return {
+        "success": True,
+        "safe_zones": zones,
+    }
