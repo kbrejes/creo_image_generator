@@ -654,7 +654,13 @@ workflow:
             def main(story_body: str, square_body: str, horizontal_body: str, raw_image: str, hook: str, body_text: str, cta: str) -> dict:
                 def extract_url(body):
                     try:
-                        data = json.loads(body)
+                        # Handle both string (JSON) and pre-parsed dict
+                        if isinstance(body, str):
+                            data = json.loads(body)
+                        elif isinstance(body, dict):
+                            data = body
+                        else:
+                            return ""
                         if data.get("success"):
                             return data.get("url", "")
                     except:
