@@ -500,7 +500,14 @@ async def api_compose_modern(
         compositor = ModernCompositor()
 
         # Choose composition method based on background image
-        if background_image_url:
+        # Skip if empty, "white", or not a valid URL
+        has_bg_image = (
+            background_image_url
+            and background_image_url.lower() not in ("", "white")
+            and background_image_url.startswith("http")
+        )
+
+        if has_bg_image:
             image_bytes = compositor.compose_with_image_overlay(
                 hook_text=hook_text,
                 body_text=body_text,
