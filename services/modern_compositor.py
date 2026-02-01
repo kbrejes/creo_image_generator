@@ -359,7 +359,6 @@ class ModernCompositor:
             Text(text)
             .font_size(font_size)
             .color(scheme.hook_color)
-            .font_weight("bold")
         )
 
         # Add glow effect if specified
@@ -410,8 +409,7 @@ class ModernCompositor:
             Text(text)
             .font_size(font_size)
             .color(scheme.cta_text)
-            .font_weight("bold")
-            .padding(v_padding, h_padding)
+                        .padding(v_padding, h_padding)
             .background_color(cta_bg)
             .border_radius(50)  # Pill shape
             .text_shadows(Shadow(offset=(0, 2), blur_radius=4, color="#00000033"))
@@ -617,8 +615,7 @@ class ModernCompositor:
             Text(hook_text)
             .font_size(font_sizes["hook"])
             .color("#ffffff")
-            .font_weight("bold")
-            .text_shadows(
+                        .text_shadows(
                 Shadow(offset=(0, 0), blur_radius=20, color="#000000aa"),
                 Shadow(offset=(0, 4), blur_radius=10, color="#000000cc"),
             )
@@ -643,8 +640,7 @@ class ModernCompositor:
             Text(cta_text)
             .font_size(font_sizes["cta"])
             .color("#ffffff")
-            .font_weight("bold")
-            .padding(v_padding, h_padding)
+                        .padding(v_padding, h_padding)
             .background_color(cta_bg)
             .border_radius(50)
             .text_shadows(Shadow(offset=(0, 4), blur_radius=8, color="#00000066"))
