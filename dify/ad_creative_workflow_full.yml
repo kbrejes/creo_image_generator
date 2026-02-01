@@ -199,6 +199,17 @@ workflow:
               type: number
               variable: num_creatives
               default: 1
+            - label: "Design Preset"
+              required: false
+              type: select
+              variable: design_preset
+              options:
+                - "neon"
+                - "minimal"
+                - "gradient"
+                - "bold"
+                - "glass"
+              default: "neon"
         height: 54
         id: "1"
         position:
@@ -568,10 +579,10 @@ workflow:
           body:
             data: ""
             type: none
-          desc: Add text overlay to image
+          desc: Modern compositor with pictex effects (neon glow, gradients, pill buttons)
           headers: ""
           method: post
-          params: "image_url:{{#6.image_url#}}\nhook_text:{{#3.hook#}}\nbody_text:{{#3.body#}}\ncta_text:{{#3.cta#}}\noutput_size:instagram_square\nhook_font_size:120\nbody_font_size:42\ncta_font_size:48\ntext_color:{{#1.text_color#}}\ncta_emoji:{{#1.cta_emoji#}}\nbold_hook:{{#1.bold_hook#}}"
+          params: "hook_text:{{#3.hook#}}\nbody_text:{{#3.body#}}\ncta_text:{{#3.cta#}}\npreset:{{#1.design_preset#}}\noutput_size:instagram_square\nbackground_image_url:{{#6.image_url#}}"
           timeout:
             connect: 60
             max_connect_timeout: 60
@@ -579,9 +590,9 @@ workflow:
             max_write_timeout: 120
             read: 120
             write: 120
-          title: Compose Ad
+          title: Compose Modern
           type: http-request
-          url: https://creo.yourads.io/tools/compose-ad
+          url: https://creo.yourads.io/tools/compose-modern
           variables: []
         height: 98
         id: "7"
