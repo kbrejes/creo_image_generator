@@ -282,7 +282,13 @@ class ModernCompositor:
         scheme = PRESET_SCHEMES[preset]
 
         # Download and prepare background image
-        response = httpx.get(background_image_url, timeout=60, follow_redirects=True)
+        # Convert external URL to internal when running in Docker (avoid going through proxy)
+        download_url = background_image_url
+        if "creo.yourads.io" in background_image_url:
+            download_url = background_image_url.replace(
+                "https://creo.yourads.io", "http://localhost:8000"
+            )
+        response = httpx.get(download_url, timeout=60, follow_redirects=True)
         bg_image = PILImage.open(io.BytesIO(response.content)).convert("RGBA")
 
         # Resize and crop to fit
@@ -331,10 +337,15 @@ class ModernCompositor:
             .border_radius(40)
         )
 
+        # Center the content like in compose()
+        padding = int(base_size * 0.08)
         content = (
             Column(hook, body, cta)
+            .size(width, height)
             .align_items("center")
-            .padding(int(base_size * 0.08))
+            .justify_content("center")
+            .gap(30)
+            .padding(padding)
         )
 
         # Render text on transparent background
