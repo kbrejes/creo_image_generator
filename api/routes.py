@@ -507,7 +507,10 @@ async def api_compose_modern(
             and background_image_url.startswith("http")
         )
 
+        print(f"[compose-modern] has_bg_image={has_bg_image}, url={background_image_url[:50] if background_image_url else 'None'}...")
+
         if has_bg_image:
+            print("[compose-modern] calling compose_with_image_overlay...")
             image_bytes = compositor.compose_with_image_overlay(
                 hook_text=hook_text,
                 body_text=body_text,
@@ -526,9 +529,13 @@ async def api_compose_modern(
                 output_size=output_size,
             )
 
+        print(f"[compose-modern] image generated, size={len(image_bytes)}")
+
         # Upload to storage
         storage = get_storage_service()
+        print("[compose-modern] saving to storage...")
         filename, url = await storage.save(image_bytes)
+        print(f"[compose-modern] saved: {filename}")
 
         return {
             "success": True,
