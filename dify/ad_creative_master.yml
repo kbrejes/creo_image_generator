@@ -193,6 +193,38 @@ workflow:
                 - "gradient"
                 - "bold"
                 - "glass"
+            - label: "Font"
+              required: false
+              type: select
+              variable: font_name
+              options:
+                - "inter"
+                - "montserrat"
+                - "oswald"
+                - "rubik"
+                - "raleway"
+                - "roboto"
+                - "nunito"
+                - "anton"
+                - "russo_one"
+                - "jost"
+                - "manrope"
+                - "fira_sans"
+                - "exo2"
+                - "play"
+                - "pt_sans"
+                - "open_sans"
+                - "comfortaa"
+                - "source_sans"
+                - "ibm_plex"
+            - label: "Text Position"
+              required: false
+              type: select
+              variable: text_position
+              options:
+                - "center"
+                - "top_heavy"
+                - "bottom_heavy"
         height: 54
         id: "1"
         position:
@@ -532,7 +564,7 @@ workflow:
           desc: Instagram Story format
           headers: ""
           method: post
-          params: "hook_text:{{#3.hook#}}\nbody_text:{{#3.body#}}\ncta_text:{{#3.cta#}}\npreset:{{#1.design_preset#}}\noutput_size:instagram_story\nbackground_image_url:{{#7.image_url#}}"
+          params: "hook_text:{{#3.hook#}}\nbody_text:{{#3.body#}}\ncta_text:{{#3.cta#}}\npreset:{{#1.design_preset#}}\noutput_size:instagram_story\nbackground_image_url:{{#7.image_url#}}\nfont_name:{{#1.font_name#}}\ntext_position:{{#1.text_position#}}"
           timeout:
             connect: 60
             max_connect_timeout: 60
@@ -563,7 +595,7 @@ workflow:
           desc: Instagram Feed format
           headers: ""
           method: post
-          params: "hook_text:{{#3.hook#}}\nbody_text:{{#3.body#}}\ncta_text:{{#3.cta#}}\npreset:{{#1.design_preset#}}\noutput_size:instagram_square\nbackground_image_url:{{#7.image_url#}}"
+          params: "hook_text:{{#3.hook#}}\nbody_text:{{#3.body#}}\ncta_text:{{#3.cta#}}\npreset:{{#1.design_preset#}}\noutput_size:instagram_square\nbackground_image_url:{{#7.image_url#}}\nfont_name:{{#1.font_name#}}\ntext_position:{{#1.text_position#}}"
           timeout:
             connect: 60
             max_connect_timeout: 60
@@ -594,7 +626,7 @@ workflow:
           desc: YouTube/Telegram horizontal format
           headers: ""
           method: post
-          params: "hook_text:{{#3.hook#}}\nbody_text:{{#3.body#}}\ncta_text:{{#3.cta#}}\npreset:{{#1.design_preset#}}\noutput_size:telegram\nbackground_image_url:{{#7.image_url#}}"
+          params: "hook_text:{{#3.hook#}}\nbody_text:{{#3.body#}}\ncta_text:{{#3.cta#}}\npreset:{{#1.design_preset#}}\noutput_size:telegram\nbackground_image_url:{{#7.image_url#}}\nfont_name:{{#1.font_name#}}\ntext_position:{{#1.text_position#}}"
           timeout:
             connect: 60
             max_connect_timeout: 60
