@@ -282,7 +282,7 @@ class ModernCompositor:
         scheme = PRESET_SCHEMES[preset]
 
         # Download and prepare background image
-        response = httpx.get(background_image_url, timeout=30)
+        response = httpx.get(background_image_url, timeout=60, follow_redirects=True)
         bg_image = PILImage.open(io.BytesIO(response.content)).convert("RGBA")
 
         # Resize and crop to fit
