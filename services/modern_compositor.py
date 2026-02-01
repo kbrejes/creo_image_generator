@@ -352,7 +352,6 @@ class ModernCompositor:
         text: str,
         scheme: ColorScheme,
         font_size: int,
-        max_width: int,
     ) -> Text:
         """Create hook text with appropriate effects."""
         hook = (
@@ -382,7 +381,6 @@ class ModernCompositor:
         text: str,
         scheme: ColorScheme,
         font_size: int,
-        max_width: int,
     ) -> Text:
         """Create body text with subtle shadow."""
         return (
@@ -474,44 +472,41 @@ class ModernCompositor:
         # Calculate font sizes using golden ratio
         font_sizes = self._calculate_font_sizes(width, height, output_size)
 
-        # Get safe content area
-        content_x, content_y, content_width, content_height = \
-            self._get_safe_content_area(width, height, output_size)
-
         # Create text elements
-        hook = self._create_hook(hook_text, scheme, font_sizes["hook"], content_width)
-        body = self._create_body(body_text, scheme, font_sizes["body"], content_width)
+        hook = self._create_hook(hook_text, scheme, font_sizes["hook"])
+        body = self._create_body(body_text, scheme, font_sizes["body"])
         cta = self._create_cta(cta_text, scheme, font_sizes["cta"])
 
         # Calculate gaps based on content height
-        gap = max(20, int(content_height * 0.03))
+        gap = max(25, int(content_height * 0.035))
+
+        # Get safe zone for this format
+        safe_zone = SAFE_ZONES.get(output_size, SafeZone(60, 60, 60, 60))
 
         # Determine vertical positioning based on text_position
         if text_position == TextPosition.TOP_HEAVY:
             justify = "start"
-            top_padding = int(content_height * 0.1)
         elif text_position == TextPosition.BOTTOM_HEAVY:
             justify = "end"
-            top_padding = 0
         else:
             justify = "center"
-            top_padding = 0
 
-        # Create content layout within safe area
+        # Create content layout - sized to fill safe area
         content = (
             Column(hook, body, cta)
-            .size(content_width, content_height)
             .align_items("center")
             .justify_content(justify)
             .gap(gap)
-            .padding(top_padding, 0, 0, 0)
         )
 
-        # Create positioned container (offset by safe zone)
+        # Create full-size container with safe zone padding
+        # padding order: top, right, bottom, left
         positioned_content = (
             Column(content)
             .size(width, height)
-            .padding(content_y, content_x, content_y, content_x)
+            .align_items("center")
+            .justify_content(justify)
+            .padding(safe_zone.top, safe_zone.right, safe_zone.bottom, safe_zone.left)
         )
 
         # Create canvas
@@ -606,10 +601,6 @@ class ModernCompositor:
         # Calculate font sizes
         font_sizes = self._calculate_font_sizes(width, height, output_size)
 
-        # Get safe content area
-        content_x, content_y, content_width, content_height = \
-            self._get_safe_content_area(width, height, output_size)
-
         # For image overlays, always use white text with strong shadows
         hook = (
             Text(hook_text)
@@ -647,33 +638,34 @@ class ModernCompositor:
         )
 
         # Calculate gaps and positioning
-        gap = max(20, int(content_height * 0.03))
+        gap = max(25, int(content_height * 0.035))
+
+        # Get safe zone for this format
+        safe_zone = SAFE_ZONES.get(output_size, SafeZone(60, 60, 60, 60))
 
         if text_position == TextPosition.TOP_HEAVY:
             justify = "start"
-            top_padding = int(content_height * 0.1)
         elif text_position == TextPosition.BOTTOM_HEAVY:
             justify = "end"
-            top_padding = 0
         else:
             justify = "center"
-            top_padding = 0
 
         # Create content layout
         content = (
             Column(hook, body, cta)
-            .size(content_width, content_height)
             .align_items("center")
             .justify_content(justify)
             .gap(gap)
-            .padding(top_padding, 0, 0, 0)
         )
 
         # Position within safe zones
+        # padding order: top, right, bottom, left
         positioned_content = (
             Column(content)
             .size(width, height)
-            .padding(content_y, content_x, content_y, content_x)
+            .align_items("center")
+            .justify_content(justify)
+            .padding(safe_zone.top, safe_zone.right, safe_zone.bottom, safe_zone.left)
         )
 
         # Render text on transparent background
