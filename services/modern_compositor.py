@@ -488,10 +488,10 @@ class ModernCompositor:
 
         # Determine vertical positioning based on text_position
         if text_position == TextPosition.TOP_HEAVY:
-            justify = "flex-start"
+            justify = "start"
             top_padding = int(content_height * 0.1)
         elif text_position == TextPosition.BOTTOM_HEAVY:
-            justify = "flex-end"
+            justify = "end"
             top_padding = 0
         else:
             justify = "center"
@@ -650,10 +650,10 @@ class ModernCompositor:
         gap = max(20, int(content_height * 0.03))
 
         if text_position == TextPosition.TOP_HEAVY:
-            justify = "flex-start"
+            justify = "start"
             top_padding = int(content_height * 0.1)
         elif text_position == TextPosition.BOTTOM_HEAVY:
-            justify = "flex-end"
+            justify = "end"
             top_padding = 0
         else:
             justify = "center"
