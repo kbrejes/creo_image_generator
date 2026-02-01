@@ -148,24 +148,13 @@ workflow:
         target: "12"
         targetHandle: target
         type: custom
-      # Compose Horizontal -> Collect URLs
+      # Compose Horizontal -> Final Answer (bypass code parsing)
       - data:
           isInIteration: false
           sourceType: http-request
-          targetType: code
+          targetType: answer
         id: e12
         source: "12"
-        sourceHandle: source
-        target: "13"
-        targetHandle: target
-        type: custom
-      # Collect URLs -> Final Answer
-      - data:
-          isInIteration: false
-          sourceType: code
-          targetType: answer
-        id: e13
-        source: "13"
         sourceHandle: source
         target: "14"
         targetHandle: target
@@ -739,25 +728,25 @@ workflow:
             ## Your Ad Creatives (3 Formats)
 
             **Instagram Story (1080x1920):**
-            {{#13.story_url#}}
+            {{#10.body#}}
 
             **Instagram Feed (1080x1080):**
-            {{#13.square_url#}}
+            {{#11.body#}}
 
             **Horizontal (1280x720):**
-            {{#13.horizontal_url#}}
+            {{#12.body#}}
 
             ---
 
             **Raw Image (no text):**
-            {{#13.raw_image_url#}}
+            {{#7.image_url#}}
 
             ---
 
             **Approved Copy:**
-            - Hook: {{#13.hook#}}
-            - Body: {{#13.body#}}
-            - CTA: {{#13.cta#}}
+            - Hook: {{#3.hook#}}
+            - Body: {{#3.body#}}
+            - CTA: {{#3.cta#}}
           desc: "Show all 3 formats"
           selected: false
           title: Final Output
